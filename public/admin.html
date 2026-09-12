@@ -34,15 +34,42 @@
       </div>
       <form class="login-form" id="login-form">
         <div class="form-group">
-          <label for="login-password">Parola de administrator</label>
+          <label for="login-username">Nume Utilizator / Cont</label>
+          <div class="input-wrapper">
+            <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <input type="text" id="login-username" placeholder="Utilizator (ex: admin, farmacist_horesti)" value="admin" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Parola de acces</label>
           <div class="input-wrapper">
             <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
-            <input type="password" id="login-password" placeholder="Introdu parola (implicit: Cojocaru1234)" required>
+            <input type="password" id="login-password" placeholder="Introdu parola" required>
           </div>
         </div>
+
+        <!-- Selector rapid de roluri demonstrative -->
+        <div class="login-presets">
+          <span class="presets-label">Autentificare rapidă rol:</span>
+          <div class="presets-buttons">
+            <button type="button" class="btn-preset active" data-user="admin" data-pass="Cojocaru1234">
+              👑 Șef Rețea (Super-Admin)
+            </button>
+            <button type="button" class="btn-preset" data-user="farmacist_horesti" data-pass="horesti123">
+              🌿 Farmacist Horești
+            </button>
+            <button type="button" class="btn-preset" data-user="farmacist_zimbreni" data-pass="zimbreni123">
+              🏥 Farmacist Zimbreni
+            </button>
+          </div>
+        </div>
+
         <div class="login-error" id="login-error" style="display:none;"></div>
         <button type="submit" class="btn btn-primary btn-block" id="login-submit">
           Autentifică-te
@@ -131,16 +158,41 @@
           <span></span><span></span><span></span>
         </button>
         <div class="topbar-info">
-          <h2 id="view-title">Dashboard & Gestiune</h2>
+          <h2 id="view-title">Dashboard &amp; Gestiune</h2>
         </div>
+
+        <!-- Multi-Location Branch Switcher (Șef / Super-Admin) -->
+        <div class="topbar-branch-wrap" id="branch-switcher-wrap">
+          <span class="topbar-branch-label">🏢 Filială:</span>
+          <select id="branch-selector" class="topbar-branch-select" title="Comută gestiunea filialei">
+            <option value="all">🏢 Toate Filialele (Consolidat)</option>
+            <option value="horesti">🌿 Nobis Farm Horești</option>
+            <option value="zimbreni">🏥 Nobis Farm Zimbreni</option>
+          </select>
+        </div>
+
+        <!-- Locked Branch Badge pentru Farmacist (Multi-Tenant Izolat) -->
+        <div class="pharmacist-branch-badge" id="pharmacist-branch-badge" style="display:none;">
+          <span class="pbb-dot"></span>
+          <span class="pbb-name" id="pharmacist-branch-name">Nobis Farm Horești</span>
+          <span class="pbb-role">Operator POS</span>
+        </div>
+
         <div class="topbar-actions">
+          <div class="user-profile-pill" id="user-profile-pill">
+            <div class="user-avatar" id="user-avatar">👑</div>
+            <div class="user-meta">
+              <span class="user-name" id="user-display-name">Admin</span>
+              <span class="user-role-badge" id="user-role-badge">Șef Rețea</span>
+            </div>
+          </div>
           <a href="index.html" target="_blank" class="btn btn-outline btn-sm" id="view-site-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
               <polyline points="15 3 21 3 21 9"/>
               <line x1="10" y1="14" x2="21" y2="3"/>
             </svg>
-            Deschide Magazinul
+            Magazin
           </a>
         </div>
       </div>
@@ -250,6 +302,15 @@
               <div id="pos-feedback-msg" class="pos-feedback-msg" style="display:none;"></div>
             </div>
 
+            <!-- Rx Medical Prescription Warning Banner -->
+            <div class="pos-rx-alert-banner" id="pos-rx-alert-banner" style="display:none;">
+              <div class="rx-alert-icon">⚠️</div>
+              <div class="rx-alert-content">
+                <div class="rx-alert-title">ATENȚIE: MEDICAMENT CU REȚETĂ MEDICALĂ (Rx)!</div>
+                <div class="rx-alert-desc" id="pos-rx-alert-text">Solicitați și verificați rețeta cumpărătorului înainte de eliberarea pe bon.</div>
+              </div>
+            </div>
+
             <!-- Tabel Produse cu Buton Adaugă pe Bon -->
             <div class="admin-table-wrap">
               <table class="admin-table" id="admin-table">
@@ -257,13 +318,13 @@
                   <tr>
                     <th>Imagine</th>
                     <th>Produs &amp; Cod Bare</th>
-                    <th>Categorie</th>
+                    <th>Filială</th>
+                    <th>Expirare &amp; Lot</th>
                     <th>Preț (MDL)</th>
-                    <th>Stoc</th>
-                    <th>Status</th>
-                    <th style="text-align:center; min-width: 120px;">Acțiune POS</th>
-                    <th style="min-width: 170px;">Reaprovizionare</th>
-                    <th style="text-align:right;">Edit</th>
+                    <th>Stoc Disponibil</th>
+                    <th style="text-align:center; min-width: 110px;">Vânzare POS</th>
+                    <th class="admin-only-col" style="min-width: 160px;">Reaprovizionare</th>
+                    <th class="admin-only-col" style="text-align:right;">Acțiuni</th>
                   </tr>
                 </thead>
                 <tbody id="admin-table-body">
@@ -408,6 +469,14 @@
             <p class="reports-subtitle">Totaluri zilnice, statistici vânzări și istoricul bonurilor fiscale</p>
           </div>
           <div class="reports-header-actions">
+            <div class="reports-branch-wrap" id="reports-branch-wrap">
+              <label for="reports-branch-filter">Filială:</label>
+              <select id="reports-branch-filter" class="admin-control-select">
+                <option value="all">🏢 Toate Filialele</option>
+                <option value="horesti">🌿 Nobis Farm Horești</option>
+                <option value="zimbreni">🏥 Nobis Farm Zimbreni</option>
+              </select>
+            </div>
             <div class="reports-date-wrap">
               <label for="reports-date-input">Selectează Data:</label>
               <input type="date" id="reports-date-input" class="admin-control-input">
@@ -433,7 +502,7 @@
             </div>
             <div class="stat-card-info">
               <span class="stat-card-number" id="rep-stat-revenue">0.00 MDL</span>
-              <span class="stat-card-label">Total Încasat</span>
+              <span class="stat-card-label">Total Încasat (Net)</span>
             </div>
           </div>
 
@@ -489,9 +558,12 @@
             <thead>
               <tr>
                 <th>Nr. Bon</th>
+                <th>Filială</th>
+                <th>Operator</th>
                 <th>Dată &amp; Oră</th>
                 <th>Metodă Plată</th>
-                <th>Produse Vândute (Cantitate &times; Preț)</th>
+                <th>Status</th>
+                <th>Produse Vândute</th>
                 <th style="text-align:center;">Total Buc.</th>
                 <th>Total Încasat</th>
                 <th style="text-align:right;">Acțiuni</th>
@@ -558,11 +630,29 @@
 
             <div class="form-row">
               <div class="form-group">
+                <label for="prod-branch">Filială (Gestiune) *</label>
+                <select id="prod-branch" required>
+                  <option value="horesti">🌿 Nobis Farm Horești</option>
+                  <option value="zimbreni">🏥 Nobis Farm Zimbreni</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="prod-exp-date">Data de Expirare</label>
+                <input type="date" id="prod-exp-date">
+              </div>
+              <div class="form-group">
+                <label for="prod-batch">Serie / Număr Lot</label>
+                <input type="text" id="prod-batch" placeholder="ex: LOT-2026-X1">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
                 <label for="prod-stock">Cantitate în Stoc (număr) *</label>
                 <input type="number" id="prod-stock" min="0" placeholder="0" required>
               </div>
               <div class="form-group toggle-group">
-                <label>Rețetă medicală necesară</label>
+                <label>Rețetă medicală necesară (Rx)</label>
                 <div class="prescription-switch-wrap">
                   <label class="switch">
                     <input type="checkbox" id="prod-prescription">
@@ -670,6 +760,9 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline" id="receipt-close-btn">Închide</button>
+        <button type="button" class="btn btn-outline-danger" id="receipt-refund-btn" style="display:none;" title="Anulează bonul și reîntregește stocurile în sistem">
+          ↩️ Anulare / Retur Bon
+        </button>
         <button type="button" class="btn btn-primary" id="receipt-print-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 6 2 18 2 18 9"/>

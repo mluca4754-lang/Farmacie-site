@@ -67,6 +67,9 @@ function formatProduct(row) {
     price: parseFloat(row.price),
     old_price: row.old_price !== null && row.old_price !== undefined && row.old_price !== '' ? parseFloat(row.old_price) : null,
     stock: parseInt(row.stock, 10),
+    farmacie_id: row.farmacie_id || 'horesti',
+    expiration_date: row.expiration_date ? String(row.expiration_date).split('T')[0] : null,
+    batch_number: row.batch_number ? String(row.batch_number).trim() : '',
     requires_prescription: Boolean(row.requires_prescription === true || row.requires_prescription === 1 || row.requires_prescription === 'true')
   };
 }
@@ -103,6 +106,9 @@ function formatSale(row) {
     total_amount: parseFloat(row.total_amount),
     total_items: parseInt(row.total_items, 10) || items.reduce((acc, it) => acc + (parseInt(it.quantity, 10) || 1), 0),
     payment_method: row.payment_method || 'Numerar',
+    farmacie_id: row.farmacie_id || 'horesti',
+    status: row.status || 'completed',
+    operator_name: row.operator_name || 'Farmacist',
     created_at: row.created_at
   };
 }
@@ -135,14 +141,28 @@ async function initDatabase() {
         ALTER TABLE products ADD COLUMN IF NOT EXISTS old_price NUMERIC(10,2) DEFAULT NULL;
         ALTER TABLE products ADD COLUMN IF NOT EXISTS requires_prescription BOOLEAN DEFAULT FALSE;
         ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR(100) DEFAULT '';
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS farmacie_id VARCHAR(50) DEFAULT 'horesti';
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS expiration_date DATE DEFAULT NULL;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS batch_number VARCHAR(100) DEFAULT '';
+
+        ALTER TABLE admins ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'admin';
+        ALTER TABLE admins ADD COLUMN IF NOT EXISTS farmacie_id VARCHAR(50) DEFAULT 'all';
+        ALTER TABLE admins ADD COLUMN IF NOT EXISTS full_name VARCHAR(100) DEFAULT '';
+
+        ALTER TABLE pos_sales ADD COLUMN IF NOT EXISTS farmacie_id VARCHAR(50) DEFAULT 'horesti';
+        ALTER TABLE pos_sales ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'completed';
+        ALTER TABLE pos_sales ADD COLUMN IF NOT EXISTS operator_name VARCHAR(100) DEFAULT 'Farmacist';
       `);
 
-      // 2. Tabela admins pentru administrare
+      // 2. Tabela admins pentru administrare și operatori POS
       await pool.query(`
         CREATE TABLE IF NOT EXISTS admins (
           id SERIAL PRIMARY KEY,
           username VARCHAR(100) UNIQUE NOT NULL DEFAULT 'admin',
           password VARCHAR(255) NOT NULL,
+          role VARCHAR(50) DEFAULT 'admin',
+          farmacie_id VARCHAR(50) DEFAULT 'all',
+          full_name VARCHAR(100) DEFAULT '',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
@@ -171,6 +191,9 @@ async function initDatabase() {
           total_amount NUMERIC(10,2) NOT NULL,
           total_items INTEGER NOT NULL DEFAULT 1,
           payment_method VARCHAR(50) DEFAULT 'Numerar',
+          farmacie_id VARCHAR(50) DEFAULT 'horesti',
+          status VARCHAR(50) DEFAULT 'completed',
+          operator_name VARCHAR(100) DEFAULT 'Farmacist',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
@@ -199,6 +222,9 @@ async function initDatabase() {
         image TEXT DEFAULT '',
         category TEXT DEFAULT 'General',
         requires_prescription INTEGER DEFAULT 0,
+        farmacie_id TEXT DEFAULT 'horesti',
+        expiration_date TEXT DEFAULT NULL,
+        batch_number TEXT DEFAULT '',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -206,6 +232,9 @@ async function initDatabase() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL DEFAULT 'admin',
         password TEXT NOT NULL,
+        role TEXT DEFAULT 'admin',
+        farmacie_id TEXT DEFAULT 'all',
+        full_name TEXT DEFAULT '',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -228,6 +257,9 @@ async function initDatabase() {
         total_amount REAL NOT NULL,
         total_items INTEGER NOT NULL DEFAULT 1,
         payment_method TEXT DEFAULT 'Numerar',
+        farmacie_id TEXT DEFAULT 'horesti',
+        status TEXT DEFAULT 'completed',
+        operator_name TEXT DEFAULT 'Farmacist',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -236,6 +268,17 @@ async function initDatabase() {
     try { sqliteDb.exec('ALTER TABLE products ADD COLUMN old_price REAL DEFAULT NULL;'); } catch (e) {}
     try { sqliteDb.exec('ALTER TABLE products ADD COLUMN requires_prescription INTEGER DEFAULT 0;'); } catch (e) {}
     try { sqliteDb.exec("ALTER TABLE products ADD COLUMN barcode TEXT DEFAULT '';"); } catch (e) {}
+    try { sqliteDb.exec("ALTER TABLE products ADD COLUMN farmacie_id TEXT DEFAULT 'horesti';"); } catch (e) {}
+    try { sqliteDb.exec("ALTER TABLE products ADD COLUMN expiration_date TEXT DEFAULT NULL;"); } catch (e) {}
+    try { sqliteDb.exec("ALTER TABLE products ADD COLUMN batch_number TEXT DEFAULT '';"); } catch (e) {}
+
+    try { sqliteDb.exec("ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin';"); } catch (e) {}
+    try { sqliteDb.exec("ALTER TABLE admins ADD COLUMN farmacie_id TEXT DEFAULT 'all';"); } catch (e) {}
+    try { sqliteDb.exec("ALTER TABLE admins ADD COLUMN full_name TEXT DEFAULT '';"); } catch (e) {}
+
+    try { sqliteDb.exec("ALTER TABLE pos_sales ADD COLUMN farmacie_id TEXT DEFAULT 'horesti';"); } catch (e) {}
+    try { sqliteDb.exec("ALTER TABLE pos_sales ADD COLUMN status TEXT DEFAULT 'completed';"); } catch (e) {}
+    try { sqliteDb.exec("ALTER TABLE pos_sales ADD COLUMN operator_name TEXT DEFAULT 'Farmacist';"); } catch (e) {}
 
     console.log('✅ Tabelele SQLite ("products", "admins", "orders", "pos_sales") sunt pregătite.');
   }
@@ -246,14 +289,29 @@ async function initDatabase() {
 // ──────────────────────────────────────────────
 
 /**
- * Obține toate produsele.
+ * Obține produsele (opțional filtrate după filiala respectivă).
  */
-async function getAllProducts() {
+async function getAllProducts(farmacieId = null) {
+  const hasFilter = farmacieId && farmacieId !== 'all';
   if (cleanDatabaseUrl) {
-    const result = await pool.query('SELECT * FROM products ORDER BY created_at DESC');
+    let sql = 'SELECT * FROM products';
+    const params = [];
+    if (hasFilter) {
+      sql += ' WHERE farmacie_id = $1';
+      params.push(farmacieId);
+    }
+    sql += ' ORDER BY created_at DESC';
+    const result = await pool.query(sql, params);
     return result.rows.map(formatProduct);
   } else {
-    return sqliteDb.prepare('SELECT * FROM products ORDER BY created_at DESC').all().map(formatProduct);
+    let sql = 'SELECT * FROM products';
+    const params = [];
+    if (hasFilter) {
+      sql += ' WHERE farmacie_id = ?';
+      params.push(farmacieId);
+    }
+    sql += ' ORDER BY created_at DESC';
+    return sqliteDb.prepare(sql).all(...params).map(formatProduct);
   }
 }
 
@@ -270,50 +328,63 @@ async function getProductById(id) {
 }
 
 /**
- * Adaugă un produs nou cu toate câmpurile cerute (inclusiv cod de bare).
+ * Adaugă un produs nou cu toate câmpurile cerute (inclusiv filială, dată de expirare și lot).
  */
-async function addProduct({ name, barcode, description, price, old_price, stock, image, category, requires_prescription }) {
+async function addProduct({ name, barcode, description, price, old_price, stock, image, category, requires_prescription, farmacie_id, expiration_date, batch_number }) {
   const parsedOldPrice = old_price !== undefined && old_price !== null && old_price !== '' ? parseFloat(old_price) : null;
   const parsedStock = parseInt(stock, 10) || 0;
   const parsedPrice = parseFloat(price) || 0;
   const parsedBarcode = barcode ? String(barcode).trim() : '';
   const hasPrescription = Boolean(requires_prescription === true || requires_prescription === 1 || requires_prescription === 'true');
+  const branchId = farmacie_id || 'horesti';
+  const expDate = expiration_date || null;
+  const batchNum = batch_number ? String(batch_number).trim() : '';
 
   if (cleanDatabaseUrl) {
     const result = await pool.query(
-      'INSERT INTO products (name, barcode, description, price, old_price, stock, image, category, requires_prescription) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [name, parsedBarcode, description || '', parsedPrice, parsedOldPrice, parsedStock, image || '', category || 'General', hasPrescription]
+      'INSERT INTO products (name, barcode, description, price, old_price, stock, image, category, requires_prescription, farmacie_id, expiration_date, batch_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
+      [name, parsedBarcode, description || '', parsedPrice, parsedOldPrice, parsedStock, image || '', category || 'General', hasPrescription, branchId, expDate, batchNum]
     );
     return formatProduct(result.rows[0]);
   } else {
     const stmt = sqliteDb.prepare(
-      'INSERT INTO products (name, barcode, description, price, old_price, stock, image, category, requires_prescription) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO products (name, barcode, description, price, old_price, stock, image, category, requires_prescription, farmacie_id, expiration_date, batch_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    const info = stmt.run(name, parsedBarcode, description || '', parsedPrice, parsedOldPrice, parsedStock, image || '', category || 'General', hasPrescription ? 1 : 0);
+    const info = stmt.run(name, parsedBarcode, description || '', parsedPrice, parsedOldPrice, parsedStock, image || '', category || 'General', hasPrescription ? 1 : 0, branchId, expDate, batchNum);
     return formatProduct(sqliteDb.prepare('SELECT * FROM products WHERE id = ?').get(info.lastInsertRowid));
   }
 }
 
 /**
- * Actualizează un produs complet (inclusiv cod de bare).
+ * Actualizează un produs complet (inclusiv filială, dată de expirare și lot).
  */
-async function updateProduct(id, { name, barcode, description, price, old_price, stock, image, category, requires_prescription }) {
-  const parsedOldPrice = old_price !== undefined && old_price !== null && old_price !== '' ? parseFloat(old_price) : null;
-  const parsedStock = parseInt(stock, 10) || 0;
-  const parsedPrice = parseFloat(price) || 0;
-  const parsedBarcode = barcode !== undefined ? String(barcode).trim() : '';
-  const hasPrescription = Boolean(requires_prescription === true || requires_prescription === 1 || requires_prescription === 'true');
+async function updateProduct(id, { name, barcode, description, price, old_price, stock, image, category, requires_prescription, farmacie_id, expiration_date, batch_number }) {
+  const existing = await getProductById(id);
+  const parsedOldPrice = old_price !== undefined ? (old_price !== null && old_price !== '' ? parseFloat(old_price) : null) : (existing ? existing.old_price : null);
+  const parsedStock = stock !== undefined ? (parseInt(stock, 10) || 0) : (existing ? existing.stock : 0);
+  const parsedPrice = price !== undefined ? (parseFloat(price) || 0) : (existing ? existing.price : 0);
+  const parsedBarcode = barcode !== undefined ? String(barcode).trim() : (existing ? existing.barcode : '');
+  const hasPrescription = requires_prescription !== undefined
+    ? Boolean(requires_prescription === true || requires_prescription === 1 || requires_prescription === 'true')
+    : (existing ? existing.requires_prescription : false);
+  const branchId = farmacie_id !== undefined ? farmacie_id : (existing ? existing.farmacie_id : 'horesti');
+  const expDate = expiration_date !== undefined ? (expiration_date || null) : (existing ? existing.expiration_date : null);
+  const batchNum = batch_number !== undefined ? String(batch_number).trim() : (existing ? existing.batch_number : '');
+  const prodName = name !== undefined ? name : (existing ? existing.name : '');
+  const prodDesc = description !== undefined ? description : (existing ? existing.description : '');
+  const prodImg = image !== undefined ? image : (existing ? existing.image : '');
+  const prodCat = category !== undefined ? category : (existing ? existing.category : 'General');
 
   if (cleanDatabaseUrl) {
     const result = await pool.query(
-      'UPDATE products SET name=$1, barcode=$2, description=$3, price=$4, old_price=$5, stock=$6, image=$7, category=$8, requires_prescription=$9 WHERE id=$10 RETURNING *',
-      [name, parsedBarcode, description, parsedPrice, parsedOldPrice, parsedStock, image, category, hasPrescription, id]
+      'UPDATE products SET name=$1, barcode=$2, description=$3, price=$4, old_price=$5, stock=$6, image=$7, category=$8, requires_prescription=$9, farmacie_id=$10, expiration_date=$11, batch_number=$12 WHERE id=$13 RETURNING *',
+      [prodName, parsedBarcode, prodDesc, parsedPrice, parsedOldPrice, parsedStock, prodImg, prodCat, hasPrescription, branchId, expDate, batchNum, id]
     );
     return formatProduct(result.rows[0]);
   } else {
     sqliteDb.prepare(
-      'UPDATE products SET name=?, barcode=?, description=?, price=?, old_price=?, stock=?, image=?, category=?, requires_prescription=? WHERE id=?'
-    ).run(name, parsedBarcode, description, parsedPrice, parsedOldPrice, parsedStock, image, category, hasPrescription ? 1 : 0, id);
+      'UPDATE products SET name=?, barcode=?, description=?, price=?, old_price=?, stock=?, image=?, category=?, requires_prescription=?, farmacie_id=?, expiration_date=?, batch_number=? WHERE id=?'
+    ).run(prodName, parsedBarcode, prodDesc, parsedPrice, parsedOldPrice, parsedStock, prodImg, prodCat, hasPrescription ? 1 : 0, branchId, expDate, batchNum, id);
     return formatProduct(sqliteDb.prepare('SELECT * FROM products WHERE id = ?').get(id));
   }
 }
@@ -434,19 +505,19 @@ async function getAdminByUsername(username = 'admin') {
 }
 
 /**
- * Creează sau actualizează contul de administrator.
+ * Creează sau actualizează contul de utilizator/administrator/farmacist.
  */
-async function createAdmin(username, passwordHash) {
+async function createAdmin(username, passwordHash, role = 'admin', farmacie_id = 'all', full_name = '') {
   if (cleanDatabaseUrl) {
     const result = await pool.query(
-      'INSERT INTO admins (username, password) VALUES ($1, $2) ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password RETURNING *',
-      [username, passwordHash]
+      'INSERT INTO admins (username, password, role, farmacie_id, full_name) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password, role = EXCLUDED.role, farmacie_id = EXCLUDED.farmacie_id, full_name = EXCLUDED.full_name RETURNING *',
+      [username, passwordHash, role, farmacie_id, full_name]
     );
     return result.rows[0];
   } else {
     sqliteDb.prepare(
-      'INSERT INTO admins (username, password) VALUES (?, ?) ON CONFLICT(username) DO UPDATE SET password = excluded.password'
-    ).run(username, passwordHash);
+      'INSERT INTO admins (username, password, role, farmacie_id, full_name) VALUES (?, ?, ?, ?, ?) ON CONFLICT(username) DO UPDATE SET password = excluded.password, role = excluded.role, farmacie_id = excluded.farmacie_id, full_name = excluded.full_name'
+    ).run(username, passwordHash, role, farmacie_id, full_name);
     return sqliteDb.prepare('SELECT * FROM admins WHERE username = ?').get(username);
   }
 }
@@ -565,31 +636,46 @@ async function countOrders(status = null) {
 }
 
 /**
- * Obține statisticile complete pentru Dashboard.
+ * Obține statisticile complete pentru Dashboard (opțional filtrate după filială).
  */
-async function getDashboardStats() {
+async function getDashboardStats(farmacieId = null) {
   let totalProducts = 0;
   let newOrders = 0;
   let criticalStock = 0;
   let outOfStock = 0;
+  const hasBranch = farmacieId && farmacieId !== 'all';
 
   if (cleanDatabaseUrl) {
-    const pCount = await pool.query('SELECT COUNT(*) as count FROM products');
+    const pSql = hasBranch ? 'SELECT COUNT(*) as count FROM products WHERE farmacie_id = $1' : 'SELECT COUNT(*) as count FROM products';
+    const pParams = hasBranch ? [farmacieId] : [];
+    const pCount = await pool.query(pSql, pParams);
     totalProducts = parseInt(pCount.rows[0].count, 10);
 
     const oCount = await pool.query("SELECT COUNT(*) as count FROM orders WHERE status = 'Nouă'");
     newOrders = parseInt(oCount.rows[0].count, 10);
 
-    const critCount = await pool.query('SELECT COUNT(*) as count FROM products WHERE stock > 0 AND stock < 5');
+    const critSql = hasBranch
+      ? 'SELECT COUNT(*) as count FROM products WHERE farmacie_id = $1 AND stock > 0 AND stock < 5'
+      : 'SELECT COUNT(*) as count FROM products WHERE stock > 0 AND stock < 5';
+    const critCount = await pool.query(critSql, pParams);
     criticalStock = parseInt(critCount.rows[0].count, 10);
 
-    const outCount = await pool.query('SELECT COUNT(*) as count FROM products WHERE stock = 0');
+    const outSql = hasBranch
+      ? 'SELECT COUNT(*) as count FROM products WHERE farmacie_id = $1 AND stock = 0'
+      : 'SELECT COUNT(*) as count FROM products WHERE stock = 0';
+    const outCount = await pool.query(outSql, pParams);
     outOfStock = parseInt(outCount.rows[0].count, 10);
   } else {
-    totalProducts = sqliteDb.prepare('SELECT COUNT(*) as count FROM products').get().count;
+    if (hasBranch) {
+      totalProducts = sqliteDb.prepare('SELECT COUNT(*) as count FROM products WHERE farmacie_id = ?').get(farmacieId).count;
+      criticalStock = sqliteDb.prepare('SELECT COUNT(*) as count FROM products WHERE farmacie_id = ? AND stock > 0 AND stock < 5').get(farmacieId).count;
+      outOfStock = sqliteDb.prepare('SELECT COUNT(*) as count FROM products WHERE farmacie_id = ? AND stock = 0').get(farmacieId).count;
+    } else {
+      totalProducts = sqliteDb.prepare('SELECT COUNT(*) as count FROM products').get().count;
+      criticalStock = sqliteDb.prepare('SELECT COUNT(*) as count FROM products WHERE stock > 0 AND stock < 5').get().count;
+      outOfStock = sqliteDb.prepare('SELECT COUNT(*) as count FROM products WHERE stock = 0').get().count;
+    }
     newOrders = sqliteDb.prepare("SELECT COUNT(*) as count FROM orders WHERE status = 'Nouă'").get().count;
-    criticalStock = sqliteDb.prepare('SELECT COUNT(*) as count FROM products WHERE stock > 0 AND stock < 5').get().count;
-    outOfStock = sqliteDb.prepare('SELECT COUNT(*) as count FROM products WHERE stock = 0').get().count;
   }
 
   return {
@@ -601,14 +687,14 @@ async function getDashboardStats() {
 }
 
 // ──────────────────────────────────────────────
-//  Operațiuni pentru Casa de Marcat (POS Sales)
+//  Operațiuni pentru Casa de Marcat (POS Sales) & Retururi
 // ──────────────────────────────────────────────
 
 /**
  * Înregistrează o vânzare completă de la POS (Bon fiscal).
- * Scade atomic stocurile produselor vândute și salvează tranzacția.
+ * Scade atomic stocurile produselor vândute din filiala respectivă și salvează tranzacția.
  */
-async function recordPosSale({ items, total_amount, total_items, payment_method, receipt_number }) {
+async function recordPosSale({ items, total_amount, total_items, payment_method, receipt_number, farmacie_id, operator_name }) {
   const parsedItems = typeof items === 'string' ? JSON.parse(items) : (items || []);
   if (!parsedItems.length) {
     throw new Error('Bonul trebuie să conțină cel puțin un produs.');
@@ -619,10 +705,12 @@ async function recordPosSale({ items, total_amount, total_items, payment_method,
   const parsedTotal = parseFloat(total_amount) || 0;
   const countItems = parseInt(total_items, 10) || parsedItems.reduce((acc, it) => acc + (parseInt(it.quantity, 10) || 1), 0);
   const payment = payment_method || 'Numerar';
+  const branchId = farmacie_id || 'horesti';
+  const operator = operator_name || 'Farmacist';
 
   const updatedProducts = [];
 
-  // Scădem stocul fiecărui produs din bon
+  // Scădem stocul fiecărui produs din bon în filiala respectivă
   for (const item of parsedItems) {
     const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
     const prodId = parseInt(item.id, 10);
@@ -649,14 +737,14 @@ async function recordPosSale({ items, total_amount, total_items, payment_method,
   let saleRow;
   if (cleanDatabaseUrl) {
     const sRes = await pool.query(
-      'INSERT INTO pos_sales (receipt_number, items, total_amount, total_items, payment_method) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [receiptNum, itemsJson, parsedTotal, countItems, payment]
+      'INSERT INTO pos_sales (receipt_number, items, total_amount, total_items, payment_method, farmacie_id, status, operator_name) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [receiptNum, itemsJson, parsedTotal, countItems, payment, branchId, 'completed', operator]
     );
     saleRow = sRes.rows[0];
   } else {
     const info = sqliteDb.prepare(
-      'INSERT INTO pos_sales (receipt_number, items, total_amount, total_items, payment_method) VALUES (?, ?, ?, ?, ?)'
-    ).run(receiptNum, itemsJson, parsedTotal, countItems, payment);
+      'INSERT INTO pos_sales (receipt_number, items, total_amount, total_items, payment_method, farmacie_id, status, operator_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(receiptNum, itemsJson, parsedTotal, countItems, payment, branchId, 'completed', operator);
     saleRow = sqliteDb.prepare('SELECT * FROM pos_sales WHERE id = ?').get(info.lastInsertRowid);
   }
 
@@ -667,62 +755,186 @@ async function recordPosSale({ items, total_amount, total_items, payment_method,
 }
 
 /**
- * Obține istoricul bonurilor POS.
+ * Anulare / Retur Bon POS:
+ * Marchează bonul ca 'refunded' și reîntregește automat stocurile produselor (+cantitate).
  */
-async function getPosSales({ date, limit = 100 } = {}) {
+async function refundPosSale(saleIdOrReceipt, operatorName = '') {
+  let saleRow;
+  const isNumeric = !isNaN(Number(saleIdOrReceipt)) && String(saleIdOrReceipt).trim() !== '';
+
+  if (cleanDatabaseUrl) {
+    const q = isNumeric
+      ? 'SELECT * FROM pos_sales WHERE id = $1 OR receipt_number = $2'
+      : 'SELECT * FROM pos_sales WHERE receipt_number = $1';
+    const params = isNumeric ? [Number(saleIdOrReceipt), String(saleIdOrReceipt)] : [String(saleIdOrReceipt)];
+    const res = await pool.query(q, params);
+    saleRow = res.rows[0];
+  } else {
+    const q = isNumeric
+      ? 'SELECT * FROM pos_sales WHERE id = ? OR receipt_number = ?'
+      : 'SELECT * FROM pos_sales WHERE receipt_number = ?';
+    const params = isNumeric ? [Number(saleIdOrReceipt), String(saleIdOrReceipt)] : [String(saleIdOrReceipt)];
+    saleRow = sqliteDb.prepare(q).get(...params);
+  }
+
+  if (!saleRow) {
+    throw new Error('Bonul / vânzarea nu a fost găsită.');
+  }
+
+  if (saleRow.status === 'refunded') {
+    throw new Error('Acest bon a fost deja anulat / returnat anterior.');
+  }
+
+  let items = [];
+  try {
+    items = typeof saleRow.items === 'string' ? JSON.parse(saleRow.items) : (saleRow.items || []);
+  } catch (e) {
+    items = [];
+  }
+
+  const restoredProducts = [];
+
+  // Restabilim stocul fiecărui produs din bon (+cantitate vândută)
+  for (const it of items) {
+    const qty = Math.max(1, parseInt(it.quantity, 10) || 1);
+    const prodId = parseInt(it.id, 10);
+    if (!prodId) continue;
+
+    if (cleanDatabaseUrl) {
+      const pRes = await pool.query(
+        'UPDATE products SET stock = stock + $1 WHERE id = $2 RETURNING *',
+        [qty, prodId]
+      );
+      if (pRes.rows && pRes.rows[0]) {
+        restoredProducts.push(formatProduct(pRes.rows[0]));
+      }
+    } else {
+      sqliteDb.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(qty, prodId);
+      const row = sqliteDb.prepare('SELECT * FROM products WHERE id = ?').get(prodId);
+      if (row) {
+        restoredProducts.push(formatProduct(row));
+      }
+    }
+  }
+
+  const refundOp = operatorName || saleRow.operator_name || 'Farmacist';
+  let updatedSaleRow;
+
+  if (cleanDatabaseUrl) {
+    const updRes = await pool.query(
+      'UPDATE pos_sales SET status = $1, operator_name = $2 WHERE id = $3 RETURNING *',
+      ['refunded', refundOp, saleRow.id]
+    );
+    updatedSaleRow = updRes.rows[0];
+  } else {
+    sqliteDb.prepare('UPDATE pos_sales SET status = ?, operator_name = ? WHERE id = ?').run('refunded', refundOp, saleRow.id);
+    updatedSaleRow = sqliteDb.prepare('SELECT * FROM pos_sales WHERE id = ?').get(saleRow.id);
+  }
+
+  return {
+    sale: formatSale(updatedSaleRow),
+    restoredProducts
+  };
+}
+
+/**
+ * Obține istoricul bonurilor POS (filtrabil după dată și filială).
+ */
+async function getPosSales({ date, farmacieId = null, limit = 100 } = {}) {
+  const hasBranch = farmacieId && farmacieId !== 'all';
   if (cleanDatabaseUrl) {
     let query = 'SELECT * FROM pos_sales';
+    const where = [];
     const params = [];
+
     if (date) {
-      query += ' WHERE DATE(created_at) = $1';
       params.push(date);
+      where.push(`DATE(created_at) = $${params.length}`);
     }
-    query += ' ORDER BY created_at DESC LIMIT $' + (params.length + 1);
+    if (hasBranch) {
+      params.push(farmacieId);
+      where.push(`farmacie_id = $${params.length}`);
+    }
+
+    if (where.length) {
+      query += ' WHERE ' + where.join(' AND ');
+    }
+
     params.push(limit);
+    query += ` ORDER BY created_at DESC LIMIT $${params.length}`;
+
     const result = await pool.query(query, params);
     return result.rows.map(formatSale);
   } else {
     let query = 'SELECT * FROM pos_sales';
+    const where = [];
     const params = [];
+
     if (date) {
-      query += " WHERE date(created_at) = ?";
       params.push(date);
+      where.push("date(created_at) = ?");
     }
-    query += ' ORDER BY created_at DESC LIMIT ?';
+    if (hasBranch) {
+      params.push(farmacieId);
+      where.push("farmacie_id = ?");
+    }
+
+    if (where.length) {
+      query += ' WHERE ' + where.join(' AND ');
+    }
+
     params.push(limit);
+    query += ' ORDER BY created_at DESC LIMIT ?';
+
     return sqliteDb.prepare(query).all(...params).map(formatSale);
   }
 }
 
 /**
- * Raport vânzări POS pentru o anumită zi (sau azi).
+ * Raport vânzări POS pentru o anumită zi (sau azi), filtrabil după filială.
  */
-async function getPosSalesReport(targetDate = null) {
+async function getPosSalesReport({ targetDate = null, farmacieId = null } = {}) {
   const dateStr = targetDate || new Date().toISOString().split('T')[0];
+  const hasBranch = farmacieId && farmacieId !== 'all';
   let sales = [];
 
   if (cleanDatabaseUrl) {
-    const result = await pool.query(
-      'SELECT * FROM pos_sales WHERE DATE(created_at) = $1 ORDER BY created_at DESC',
-      [dateStr]
-    );
+    let query = 'SELECT * FROM pos_sales WHERE DATE(created_at) = $1';
+    const params = [dateStr];
+    if (hasBranch) {
+      params.push(farmacieId);
+      query += ' AND farmacie_id = $2';
+    }
+    query += ' ORDER BY created_at DESC';
+    const result = await pool.query(query, params);
     sales = result.rows.map(formatSale);
   } else {
-    sales = sqliteDb.prepare(
-      "SELECT * FROM pos_sales WHERE date(created_at) = ? ORDER BY created_at DESC"
-    ).all(dateStr).map(formatSale);
+    let query = "SELECT * FROM pos_sales WHERE date(created_at) = ?";
+    const params = [dateStr];
+    if (hasBranch) {
+      params.push(farmacieId);
+      query += " AND farmacie_id = ?";
+    }
+    query += ' ORDER BY created_at DESC';
+    sales = sqliteDb.prepare(query).all(...params).map(formatSale);
   }
 
-  const totalRevenue = sales.reduce((acc, s) => acc + (parseFloat(s.total_amount) || 0), 0);
-  const totalItemsSold = sales.reduce((acc, s) => acc + (parseInt(s.total_items, 10) || 0), 0);
-  const totalReceipts = sales.length;
+  // Calculăm încasările doar pentru bonurile active (non-refunded)
+  const activeSales = sales.filter(s => s.status !== 'refunded');
+  const refundedSales = sales.filter(s => s.status === 'refunded');
+
+  const totalRevenue = activeSales.reduce((acc, s) => acc + (parseFloat(s.total_amount) || 0), 0);
+  const totalItemsSold = activeSales.reduce((acc, s) => acc + (parseInt(s.total_items, 10) || 0), 0);
+  const totalReceipts = activeSales.length;
   const avgReceipt = totalReceipts > 0 ? totalRevenue / totalReceipts : 0;
 
   return {
     date: dateStr,
+    farmacieId: farmacieId || 'all',
     totalRevenue: parseFloat(totalRevenue.toFixed(2)),
     totalItemsSold,
     totalReceipts,
+    refundedCount: refundedSales.length,
     avgReceipt: parseFloat(avgReceipt.toFixed(2)),
     sales
   };
@@ -754,6 +966,7 @@ module.exports = {
   countOrders,
   getDashboardStats,
   recordPosSale,
+  refundPosSale,
   getPosSales,
   getPosSalesReport
 };
