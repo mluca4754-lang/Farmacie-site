@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Admin — Farmacia Moldova</title>
+  <title>Panou de Administrare — Farmacia Moldova</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -23,14 +23,14 @@
             <path d="M24 12V36M12 24H36" stroke="white" stroke-width="4" stroke-linecap="round"/>
             <defs>
               <linearGradient id="gradLogin" x1="0" y1="0" x2="48" y2="48">
-                <stop stop-color="#00b894"/>
-                <stop offset="1" stop-color="#00cec9"/>
+                <stop stop-color="#059669"/>
+                <stop offset="1" stop-color="#10b981"/>
               </linearGradient>
             </defs>
           </svg>
         </div>
         <h1>Panou de Administrare</h1>
-        <p>Farmacia Moldova</p>
+        <p>Farmacia Moldova — Sistem de Gestiune</p>
       </div>
       <form class="login-form" id="login-form">
         <div class="form-group">
@@ -40,7 +40,7 @@
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
-            <input type="password" id="login-password" placeholder="Introdu parola..." required>
+            <input type="password" id="login-password" placeholder="Introdu parola (implicit: Cojocaru1234)" required>
           </div>
         </div>
         <div class="login-error" id="login-error" style="display:none;"></div>
@@ -51,7 +51,7 @@
           </svg>
         </button>
       </form>
-      <a href="/" class="login-back">← Înapoi la pagina principală</a>
+      <a href="/" class="login-back">← Înapoi la pagina farmaciei</a>
     </div>
   </div>
 
@@ -68,15 +68,15 @@
               <path d="M20 10V30M10 20H30" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
               <defs>
                 <linearGradient id="gradSide" x1="0" y1="0" x2="40" y2="40">
-                  <stop stop-color="#00b894"/>
-                  <stop offset="1" stop-color="#00cec9"/>
+                  <stop stop-color="#059669"/>
+                  <stop offset="1" stop-color="#10b981"/>
                 </linearGradient>
               </defs>
             </svg>
           </div>
           <div class="logo-text">
             <span class="logo-name">Farmacia</span>
-            <span class="logo-sub">Admin Panel</span>
+            <span class="logo-sub">Gestiune & Admin</span>
           </div>
         </a>
       </div>
@@ -86,7 +86,15 @@
             <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
             <line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
           </svg>
-          Produse
+          Gestiune Produse
+        </a>
+        <a href="#" class="sidebar-link" data-view="orders" id="sidebar-orders">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+            <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
+          </svg>
+          Comenzi Primite
+          <span class="sidebar-badge" id="sidebar-orders-badge" style="display:none;">0</span>
         </a>
         <a href="#" class="sidebar-link" data-view="add" id="sidebar-add">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -116,23 +124,24 @@
           <span></span><span></span><span></span>
         </button>
         <div class="topbar-info">
-          <h2 id="view-title">Gestionare Produse</h2>
+          <h2 id="view-title">Dashboard & Gestiune</h2>
         </div>
         <div class="topbar-actions">
-          <a href="/" class="btn btn-outline btn-sm" id="view-site-btn">
+          <a href="/" target="_blank" class="btn btn-outline btn-sm" id="view-site-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
               <polyline points="15 3 21 3 21 9"/>
               <line x1="10" y1="14" x2="21" y2="3"/>
             </svg>
-            Vezi Site-ul
+            Deschide Magazinul
           </a>
         </div>
       </div>
 
-      <!-- Stats Cards -->
+      <!-- 1. DASHBOARD: 3 STATS CARDS -->
       <div class="stats-row" id="stats-row">
-        <div class="stat-card" id="stat-total">
+        <!-- Card 1: Total Produse -->
+        <div class="stat-card" id="stat-card-total">
           <div class="stat-card-icon stat-icon-blue">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
@@ -141,115 +150,227 @@
           </div>
           <div class="stat-card-info">
             <span class="stat-card-number" id="admin-stat-total">0</span>
-            <span class="stat-card-label">Total Produse</span>
+            <span class="stat-card-label">Număr Total Produse</span>
           </div>
         </div>
-        <div class="stat-card" id="stat-instock">
+
+        <!-- Card 2: Comenzi Noi -->
+        <div class="stat-card" id="stat-card-orders">
           <div class="stat-card-icon stat-icon-green">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
             </svg>
           </div>
           <div class="stat-card-info">
-            <span class="stat-card-number" id="admin-stat-instock">0</span>
-            <span class="stat-card-label">În Stoc</span>
+            <span class="stat-card-number" id="admin-stat-orders">0</span>
+            <span class="stat-card-label">Număr Comenzi Noi</span>
           </div>
         </div>
-        <div class="stat-card" id="stat-outofstock">
-          <div class="stat-card-icon stat-icon-red">
+
+        <!-- Card 3: Stoc Critic (< 5 bucăți) -->
+        <div class="stat-card" id="stat-card-critical">
+          <div class="stat-card-icon stat-icon-amber">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
           </div>
           <div class="stat-card-info">
-            <span class="stat-card-number" id="admin-stat-outofstock">0</span>
-            <span class="stat-card-label">Stoc Epuizat</span>
-          </div>
-        </div>
-        <div class="stat-card" id="stat-categories">
-          <div class="stat-card-icon stat-icon-purple">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-            </svg>
-          </div>
-          <div class="stat-card-info">
-            <span class="stat-card-number" id="admin-stat-categories">0</span>
-            <span class="stat-card-label">Categorii</span>
+            <span class="stat-card-number" id="admin-stat-critical">0</span>
+            <span class="stat-card-label">Stoc Critic (&lt; 5 buc.)</span>
           </div>
         </div>
       </div>
 
-      <!-- Products View -->
-      <div class="admin-view" id="view-products">
-        <div class="admin-table-header">
-          <input type="text" class="admin-search" id="admin-search" placeholder="Caută produse...">
+      <!-- Alerter vizual roșu pentru produse cu stoc 0 -->
+      <div class="out-of-stock-banner" id="out-of-stock-alert" style="display:none;">
+        <div class="alert-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
         </div>
+        <div class="alert-content">
+          <strong id="alert-title">Atenție: Produse cu stoc epuizat!</strong>
+          <span id="alert-desc">Există produse cu stocul 0 bucăți.</span>
+        </div>
+        <button class="btn btn-sm btn-outline-danger" id="filter-out-of-stock-btn">Vezi produsele epuizate</button>
+      </div>
+
+      <!-- ═══════ 2. GESTIUNE PRODUSE VIEW ═══════ -->
+      <div class="admin-view" id="view-products">
+        <div class="admin-table-controls">
+          <div class="search-wrap">
+            <svg class="control-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" class="admin-control-input" id="admin-search" placeholder="Căutare rapidă după denumire produs...">
+          </div>
+          <div class="filter-wrap">
+            <select class="admin-control-select" id="admin-category-filter">
+              <option value="">Toate Categoriile</option>
+              <option value="Analgezice">Analgezice</option>
+              <option value="Suplimente">Suplimente</option>
+              <option value="Cosmetice">Cosmetice</option>
+              <option value="Îngrijire personală">Îngrijire personală</option>
+              <option value="Copii & Mămici">Copii & Mămici</option>
+              <option value="Antibiotice">Antibiotice</option>
+              <option value="Vitamine">Vitamine</option>
+              <option value="Antialergice">Antialergice</option>
+              <option value="Gastro-intestinale">Gastro-intestinale</option>
+              <option value="ORL">ORL</option>
+              <option value="General">General</option>
+            </select>
+          </div>
+        </div>
+
         <div class="admin-table-wrap">
           <table class="admin-table" id="admin-table">
             <thead>
               <tr>
                 <th>Imagine</th>
-                <th>Produs</th>
+                <th>Denumire Produs</th>
                 <th>Categorie</th>
+                <th>Rețetă</th>
                 <th>Preț (MDL)</th>
                 <th>Stoc</th>
                 <th>Status</th>
-                <th>Acțiuni</th>
+                <th style="text-align:right;">Acțiuni</th>
               </tr>
             </thead>
             <tbody id="admin-table-body">
-              <!-- Loaded by JS -->
+              <!-- Rendered via JS -->
             </tbody>
           </table>
         </div>
         <div class="admin-loading" id="admin-loading">
           <div class="spinner"></div>
-          <p>Se încarcă...</p>
+          <p>Se încarcă catalogul...</p>
         </div>
       </div>
 
-      <!-- Add / Edit Product View -->
+      <!-- ═══════ 3. SECȚIUNE DE COMENZI (ORDERS MANAGEMENT) ═══════ -->
+      <div class="admin-view" id="view-orders" style="display:none;">
+        <div class="admin-table-controls">
+          <div class="search-wrap">
+            <svg class="control-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" class="admin-control-input" id="orders-search" placeholder="Caută după client, telefon sau adresă...">
+          </div>
+          <div class="filter-wrap">
+            <select class="admin-control-select" id="orders-status-filter">
+              <option value="">Toate statusurile</option>
+              <option value="Nouă">Nouă</option>
+              <option value="În procesare">În procesare</option>
+              <option value="Trimisă">Trimisă</option>
+              <option value="Finalizată">Finalizată</option>
+              <option value="Anulată">Anulată</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="orders-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Client</th>
+                <th>Telefon</th>
+                <th>Adresă Livrare</th>
+                <th>Produse Comandate</th>
+                <th>Total</th>
+                <th>Data</th>
+                <th>Status Comandă</th>
+                <th style="text-align:right;">Acțiuni</th>
+              </tr>
+            </thead>
+            <tbody id="orders-table-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+        <div class="admin-loading" id="orders-loading" style="display:none;">
+          <div class="spinner"></div>
+          <p>Se încarcă comenzile...</p>
+        </div>
+      </div>
+
+      <!-- ═══════ 4. ADĂUGARE / EDITARE PRODUS FORM ═══════ -->
       <div class="admin-view" id="view-add" style="display:none;">
         <div class="form-card">
           <h3 class="form-card-title" id="form-title">Adaugă Produs Nou</h3>
           <form id="product-form">
             <input type="hidden" id="edit-id">
+
             <div class="form-row">
               <div class="form-group">
-                <label for="prod-name">Numele produsului *</label>
+                <label for="prod-name">Denumire produs *</label>
                 <input type="text" id="prod-name" placeholder="ex: Paracetamol 500mg" required>
               </div>
               <div class="form-group">
-                <label for="prod-category">Categoria</label>
-                <input type="text" id="prod-category" placeholder="ex: Analgezice" value="General">
+                <label for="prod-category">Categorie *</label>
+                <select id="prod-category" required>
+                  <option value="Analgezice">Analgezice</option>
+                  <option value="Suplimente">Suplimente</option>
+                  <option value="Cosmetice">Cosmetice</option>
+                  <option value="Îngrijire personală">Îngrijire personală</option>
+                  <option value="Copii & Mămici">Copii & Mămici</option>
+                  <option value="Antibiotice">Antibiotice</option>
+                  <option value="Vitamine">Vitamine</option>
+                  <option value="Antialergice">Antialergice</option>
+                  <option value="Gastro-intestinale">Gastro-intestinale</option>
+                  <option value="ORL">ORL</option>
+                  <option value="General">General</option>
+                </select>
               </div>
             </div>
-            <div class="form-group">
-              <label for="prod-description">Descriere</label>
-              <textarea id="prod-description" rows="3" placeholder="Descrierea produsului..."></textarea>
-            </div>
+
             <div class="form-row">
               <div class="form-group">
-                <label for="prod-price">Preț (MDL) *</label>
+                <label for="prod-price">Preț curent (MDL) *</label>
                 <input type="number" id="prod-price" step="0.01" min="0" placeholder="0.00" required>
               </div>
               <div class="form-group">
-                <label for="prod-stock">Bucăți în stoc *</label>
-                <input type="number" id="prod-stock" min="0" placeholder="0" required>
+                <label for="prod-old-price">Preț Vechi / Redus (opțional MDL)</label>
+                <input type="number" id="prod-old-price" step="0.01" min="0" placeholder="ex: 45.00">
               </div>
             </div>
-            <div class="form-group">
-              <label for="prod-image">URL Imagine</label>
-              <input type="url" id="prod-image" placeholder="https://exemplu.com/imagine.jpg">
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="prod-stock">Cantitate în Stoc (număr) *</label>
+                <input type="number" id="prod-stock" min="0" placeholder="0" required>
+              </div>
+              <div class="form-group toggle-group">
+                <label>Rețetă medicală necesară</label>
+                <div class="prescription-switch-wrap">
+                  <label class="switch">
+                    <input type="checkbox" id="prod-prescription">
+                    <span class="slider round"></span>
+                  </label>
+                  <span class="switch-label" id="prescription-label-text">Nu (fără rețetă)</span>
+                </div>
+              </div>
             </div>
+
+            <div class="form-group">
+              <label for="prod-image">URL Imagine produs</label>
+              <input type="url" id="prod-image" placeholder="https://images.unsplash.com/...">
+            </div>
+
+            <div class="form-group">
+              <label for="prod-description">Descriere / Prospect scurt</label>
+              <textarea id="prod-description" rows="3" placeholder="Indicații terapeutice, mod de administrare, compoziție..."></textarea>
+            </div>
+
             <div class="form-actions">
               <button type="button" class="btn btn-outline" id="form-cancel">Anulează</button>
               <button type="submit" class="btn btn-primary" id="form-submit">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
-                Salvează Produs
+                Salvează Produsul
               </button>
             </div>
           </form>
@@ -263,43 +384,62 @@
   <div class="modal-overlay" id="stock-modal" style="display:none;">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Modifică Stocul</h3>
+        <h3>Modificare Stoc</h3>
         <button class="modal-close" id="stock-modal-close">&times;</button>
       </div>
       <div class="modal-body">
         <p class="modal-product-name" id="stock-product-name"></p>
         <div class="form-group">
-          <label for="stock-input">Număr de bucăți</label>
+          <label for="stock-input">Număr de bucăți în stoc</label>
           <input type="number" id="stock-input" min="0" placeholder="0">
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" id="stock-cancel">Anulează</button>
-        <button class="btn btn-primary" id="stock-save">Salvează</button>
+        <button class="btn btn-primary" id="stock-save">Actualizează Stocul</button>
       </div>
     </div>
   </div>
 
-  <!-- ═══════ DELETE CONFIRM MODAL ═══════ -->
+  <!-- ═══════ DELETE CONFIRM PRODUCT MODAL ═══════ -->
   <div class="modal-overlay" id="delete-modal" style="display:none;">
     <div class="modal-card modal-danger">
       <div class="modal-header">
-        <h3>Confirmare Ștergere</h3>
+        <h3>Confirmare Ștergere Produs</h3>
         <button class="modal-close" id="delete-modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <p>Ești sigur că vrei să ștergi produsul:</p>
+        <p>Ești sigur că vrei să ștergi produsul din inventar?</p>
         <p class="modal-product-name" id="delete-product-name"></p>
-        <p class="modal-warning">Această acțiune este ireversibilă!</p>
+        <p class="modal-warning">Această acțiune este permanentă și ireversibilă!</p>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" id="delete-cancel">Anulează</button>
-        <button class="btn btn-danger" id="delete-confirm">Șterge</button>
+        <button class="btn btn-danger" id="delete-confirm">Șterge Produsul</button>
       </div>
     </div>
   </div>
 
-  <!-- ═══════ TOAST ═══════ -->
+  <!-- ═══════ DELETE CONFIRM ORDER MODAL ═══════ -->
+  <div class="modal-overlay" id="delete-order-modal" style="display:none;">
+    <div class="modal-card modal-danger">
+      <div class="modal-header">
+        <h3>Ștergere Comandă</h3>
+        <button class="modal-close" id="delete-order-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Ești sigur că vrei să ștergi această comandă?</p>
+        <p class="modal-product-name" id="delete-order-info"></p>
+        <p class="modal-warning">Comanda va fi eliminată definitiv din baza de date.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="delete-order-cancel">Anulează</button>
+        <button class="btn btn-danger" id="delete-order-confirm">Șterge Comanda</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ TOAST NOTIFICATIONS ═══════ -->
   <div class="toast-container" id="toast-container"></div>
 
   <script src="/js/admin.js"></script>

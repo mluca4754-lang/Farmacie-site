@@ -1,5 +1,6 @@
 /**
  * Farmacia Moldova — Admin Panel JavaScript
+ * Sistem complet de gestiune (Dashboard, Produse CRUD, Comenzi)
  */
 
 (function () {
@@ -10,9 +11,13 @@
   // ──────────────────────────────────────
   let token = localStorage.getItem('farmacia_token') || null;
   let products = [];
+  let orders = [];
+  let activeView = 'products';
   let editingProductId = null;
   let deleteProductId = null;
+  let deleteOrderId = null;
   let stockProductId = null;
+  let filterOnlyOutOfStock = false;
 
   // ──────────────────────────────────────
   //  DOM Elements
@@ -27,25 +32,48 @@
   const sidebar = document.getElementById('sidebar');
   const sidebarToggle = document.getElementById('sidebar-toggle');
   const sidebarLinks = document.querySelectorAll('.sidebar-link');
+  const sidebarOrdersBadge = document.getElementById('sidebar-orders-badge');
 
   const viewProducts = document.getElementById('view-products');
+  const viewOrders = document.getElementById('view-orders');
   const viewAdd = document.getElementById('view-add');
   const viewTitle = document.getElementById('view-title');
 
+  // Stats & Alert
+  const statTotal = document.getElementById('admin-stat-total');
+  const statOrders = document.getElementById('admin-stat-orders');
+  const statCritical = document.getElementById('admin-stat-critical');
+  const outOfStockAlert = document.getElementById('out-of-stock-alert');
+  const alertTitle = document.getElementById('alert-title');
+  const alertDesc = document.getElementById('alert-desc');
+  const filterOutOfStockBtn = document.getElementById('filter-out-of-stock-btn');
+
+  // Products Table & Controls
   const adminTableBody = document.getElementById('admin-table-body');
   const adminLoading = document.getElementById('admin-loading');
   const adminSearch = document.getElementById('admin-search');
+  const adminCategoryFilter = document.getElementById('admin-category-filter');
 
+  // Orders Table & Controls
+  const ordersTableBody = document.getElementById('orders-table-body');
+  const ordersLoading = document.getElementById('orders-loading');
+  const ordersSearch = document.getElementById('orders-search');
+  const ordersStatusFilter = document.getElementById('orders-status-filter');
+
+  // Product Form
   const productForm = document.getElementById('product-form');
   const formTitle = document.getElementById('form-title');
   const formCancel = document.getElementById('form-cancel');
   const editIdField = document.getElementById('edit-id');
-
-  // Stats
-  const statTotal = document.getElementById('admin-stat-total');
-  const statInStock = document.getElementById('admin-stat-instock');
-  const statOutOfStock = document.getElementById('admin-stat-outofstock');
-  const statCategories = document.getElementById('admin-stat-categories');
+  const prodName = document.getElementById('prod-name');
+  const prodCategory = document.getElementById('prod-category');
+  const prodPrice = document.getElementById('prod-price');
+  const prodOldPrice = document.getElementById('prod-old-price');
+  const prodStock = document.getElementById('prod-stock');
+  const prodPrescription = document.getElementById('prod-prescription');
+  const prescriptionLabelText = document.getElementById('prescription-label-text');
+  const prodImage = document.getElementById('prod-image');
+  const prodDescription = document.getElementById('prod-description');
 
   // Modals
   const stockModal = document.getElementById('stock-modal');
@@ -61,6 +89,12 @@
   const deleteCancel = document.getElementById('delete-cancel');
   const deleteConfirm = document.getElementById('delete-confirm');
 
+  const deleteOrderModal = document.getElementById('delete-order-modal');
+  const deleteOrderClose = document.getElementById('delete-order-close');
+  const deleteOrderInfo = document.getElementById('delete-order-info');
+  const deleteOrderCancel = document.getElementById('delete-order-cancel');
+  const deleteOrderConfirm = document.getElementById('delete-order-confirm');
+
   const toastContainer = document.getElementById('toast-container');
 
   // ──────────────────────────────────────
@@ -73,7 +107,9 @@
     setupLogout();
     setupForm();
     setupModals();
-    setupAdminSearch();
+    setupProductControls();
+    setupOrderControls();
+    setupOutOfStockFilter();
 
     if (token) {
       const valid = await verifyToken();
@@ -118,7 +154,7 @@
       showToast('Autentificare reușită! Bine ai venit.', 'success');
 
     } catch (err) {
-      loginError.textContent = 'Eroare de conexiune. Încearcă din nou.';
+      loginError.textContent = 'Eroare de conexiune la server. Încearcă din nou.';
       loginError.style.display = 'block';
     }
   });
@@ -140,42 +176,40 @@
     loginOverlay.style.display = 'flex';
     dashboard.style.display = 'none';
     loginPassword.value = '';
-    loginPassword.focus();
   }
 
   function showDashboard() {
     loginOverlay.style.display = 'none';
     dashboard.style.display = 'flex';
-    loadProducts();
+    loadDashboardData();
   }
 
   function setupLogout() {
     logoutBtn.addEventListener('click', () => {
+      showToast('Te-ai deconectat.', 'info');
       showLogin();
-      showToast('Deconectat cu succes.', 'info');
     });
   }
 
   // ──────────────────────────────────────
-  //  API Calls
+  //  Data Loading
   // ──────────────────────────────────────
-  function authHeaders() {
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    };
+  async function loadDashboardData() {
+    await Promise.all([
+      loadProducts(),
+      loadOrders(),
+      loadStats()
+    ]);
   }
 
   async function loadProducts() {
     adminLoading.style.display = 'block';
-    adminTableBody.innerHTML = '';
-
     try {
       const res = await fetch('/api/products');
       if (!res.ok) throw new Error();
       products = await res.json();
-      updateStats();
-      renderTable();
+      renderProductsTable();
+      updateDashboardStatsUI();
     } catch (err) {
       showToast('Eroare la încărcarea produselor.', 'error');
     } finally {
@@ -183,90 +217,169 @@
     }
   }
 
-  async function createProduct(data) {
-    const res = await fetch('/api/admin/products', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error);
+  async function loadOrders() {
+    try {
+      const res = await fetch('/api/admin/orders', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.status === 401) return showLogin();
+      if (!res.ok) throw new Error();
+      orders = await res.json();
+      renderOrdersTable();
+      updateDashboardStatsUI();
+    } catch (err) {
+      console.error('Eroare la încărcarea comenzilor:', err);
     }
-    return res.json();
   }
 
-  async function updateProductAPI(id, data) {
-    const res = await fetch(`/api/admin/products/${id}`, {
-      method: 'PUT',
-      headers: authHeaders(),
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error);
+  async function loadStats() {
+    try {
+      const res = await fetch('/api/admin/stats', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const stats = await res.json();
+        applyStatsToUI(stats);
+      }
+    } catch (err) {
+      // Fallback la calculul local dacă endpoint-ul nu răspunde
+      updateDashboardStatsUI();
     }
-    return res.json();
   }
 
-  async function updateStockAPI(id, stock) {
-    const res = await fetch(`/api/admin/products/${id}/stock`, {
-      method: 'PATCH',
-      headers: authHeaders(),
-      body: JSON.stringify({ stock })
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error);
+  function applyStatsToUI({ totalProducts, newOrders, criticalStock, outOfStock }) {
+    if (statTotal) statTotal.textContent = totalProducts || 0;
+    if (statOrders) statOrders.textContent = newOrders || 0;
+    if (statCritical) statCritical.textContent = criticalStock || 0;
+
+    // Badge pe meniul de comenzi
+    if (sidebarOrdersBadge) {
+      if (newOrders > 0) {
+        sidebarOrdersBadge.textContent = newOrders;
+        sidebarOrdersBadge.style.display = 'inline-block';
+      } else {
+        sidebarOrdersBadge.style.display = 'none';
+      }
     }
-    return res.json();
+
+    // Alertă vizuală roșie pentru stoc 0
+    if (outOfStockAlert) {
+      if (outOfStock > 0) {
+        alertTitle.textContent = `Atenție: ${outOfStock} ${outOfStock === 1 ? 'produs are' : 'produse au'} stocul epuizat!`;
+        alertDesc.textContent = 'Aceste produse nu pot fi onorate pentru comenzi până la reaprovizionare.';
+        outOfStockAlert.style.display = 'flex';
+      } else {
+        outOfStockAlert.style.display = 'none';
+      }
+    }
   }
 
-  async function deleteProductAPI(id) {
-    const res = await fetch(`/api/admin/products/${id}`, {
-      method: 'DELETE',
-      headers: authHeaders()
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error);
-    }
-    return res.json();
-  }
-
-  // ──────────────────────────────────────
-  //  Stats
-  // ──────────────────────────────────────
-  function updateStats() {
-    const total = products.length;
-    const inStock = products.filter(p => p.stock > 0).length;
+  function updateDashboardStatsUI() {
+    const totalProducts = products.length;
+    const newOrders = orders.filter(o => o.status === 'Nouă').length;
+    const criticalStock = products.filter(p => p.stock > 0 && p.stock < 5).length;
     const outOfStock = products.filter(p => p.stock === 0).length;
-    const categories = new Set(products.map(p => p.category).filter(Boolean)).size;
 
-    statTotal.textContent = total;
-    statInStock.textContent = inStock;
-    statOutOfStock.textContent = outOfStock;
-    statCategories.textContent = categories;
+    applyStatsToUI({ totalProducts, newOrders, criticalStock, outOfStock });
   }
 
   // ──────────────────────────────────────
-  //  Table Rendering
+  //  Navigation & Views
   // ──────────────────────────────────────
-  function renderTable(filter = '') {
+  function setupSidebar() {
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+    });
+
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const view = link.dataset.view;
+        switchView(view);
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('open');
+        }
+      });
+    });
+  }
+
+  function switchView(view) {
+    activeView = view;
+    sidebarLinks.forEach(l => l.classList.toggle('active', l.dataset.view === view));
+
+    viewProducts.style.display = 'none';
+    if (viewOrders) viewOrders.style.display = 'none';
+    viewAdd.style.display = 'none';
+
+    if (view === 'products') {
+      viewProducts.style.display = 'block';
+      viewTitle.textContent = 'Gestiune Produse & Inventar';
+      filterOnlyOutOfStock = false;
+      renderProductsTable();
+    } else if (view === 'orders') {
+      viewOrders.style.display = 'block';
+      viewTitle.textContent = 'Comenzi Primite & Expedieri';
+      loadOrders();
+    } else if (view === 'add') {
+      viewAdd.style.display = 'block';
+      if (!editingProductId) {
+        resetForm();
+        viewTitle.textContent = 'Adaugă Produs Nou';
+      } else {
+        viewTitle.textContent = 'Editează Produs';
+      }
+    }
+  }
+
+  function setupOutOfStockFilter() {
+    if (filterOutOfStockBtn) {
+      filterOutOfStockBtn.addEventListener('click', () => {
+        switchView('products');
+        filterOnlyOutOfStock = true;
+        renderProductsTable();
+        showToast('Filtru aplicat: doar produse fără stoc.', 'info');
+      });
+    }
+  }
+
+  // ──────────────────────────────────────
+  //  Products Table Rendering & Controls
+  // ──────────────────────────────────────
+  function setupProductControls() {
+    adminSearch.addEventListener('input', () => renderProductsTable());
+    adminCategoryFilter.addEventListener('change', () => {
+      filterOnlyOutOfStock = false;
+      renderProductsTable();
+    });
+  }
+
+  function renderProductsTable() {
+    const searchVal = adminSearch.value.trim().toLowerCase();
+    const categoryVal = adminCategoryFilter.value;
+
     let filtered = products;
-    if (filter) {
-      const q = filter.toLowerCase();
-      filtered = products.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        (p.category && p.category.toLowerCase().includes(q))
+
+    if (filterOnlyOutOfStock) {
+      filtered = filtered.filter(p => p.stock === 0);
+    }
+
+    if (categoryVal) {
+      filtered = filtered.filter(p => p.category === categoryVal);
+    }
+
+    if (searchVal) {
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(searchVal) ||
+        (p.description && p.description.toLowerCase().includes(searchVal)) ||
+        (p.category && p.category.toLowerCase().includes(searchVal))
       );
     }
 
     if (filtered.length === 0) {
       adminTableBody.innerHTML = `
         <tr>
-          <td colspan="7" style="text-align:center; padding:40px; color:var(--text-muted);">
-            ${filter ? 'Niciun produs găsit.' : 'Nu există produse. Adaugă primul produs!'}
+          <td colspan="8" style="text-align:center; padding:48px 20px; color:var(--text-muted);">
+            Niciun produs găsit conform filtrelor selectate.
           </td>
         </tr>
       `;
@@ -275,41 +388,81 @@
 
     adminTableBody.innerHTML = filtered.map(p => {
       const inStock = p.stock > 0;
+      const isCritical = p.stock > 0 && p.stock < 5;
       const statusClass = inStock ? 'status-in-stock' : 'status-out-of-stock';
       const statusText = inStock ? 'În stoc' : 'Stoc epuizat';
-      const defaultTableImg = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2248%22%20height%3D%2248%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%23f1f5f9%22%2F%3E%3C%2Fsvg%3E';
-      const imgSrc = p.image || defaultTableImg;
+
+      const defaultImg = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2248%22%20height%3D%2248%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%23f1f5f9%22%2F%3E%3C%2Fsvg%3E';
+      const imgSrc = p.image || defaultImg;
+
+      // Indicator Stoc Critic / Epuizat
+      let stockBadge = '';
+      if (p.stock === 0) {
+        stockBadge = '<span class="stock-empty-badge">0</span>';
+      } else if (isCritical) {
+        stockBadge = `<span class="stock-critical-badge">Critic (&lt;5)</span>`;
+      }
+
+      // Rețetă medicală
+      const rxBadge = p.requires_prescription
+        ? '<span class="rx-badge rx-required">💊 Rețetă</span>'
+        : '<span class="rx-badge rx-free">OTC</span>';
+
+      // Preț & Preț Vechi
+      const oldPriceHtml = p.old_price
+        ? `<span class="table-old-price">${formatPrice(p.old_price)} MDL</span>`
+        : '';
 
       return `
         <tr data-id="${p.id}">
           <td>
             <img class="table-img" src="${escapeHTML(imgSrc)}" alt="${escapeHTML(p.name)}"
-                 onerror="this.src='${defaultTableImg}'">
+                 onerror="this.src='${defaultImg}'">
           </td>
           <td>
             <div class="table-product-name">${escapeHTML(p.name)}</div>
             <div class="table-product-desc">${escapeHTML(p.description || '')}</div>
           </td>
           <td><span class="table-category">${escapeHTML(p.category || 'General')}</span></td>
-          <td><span class="table-price">${formatPrice(p.price)} MDL</span></td>
-          <td class="table-stock">${p.stock}</td>
+          <td>${rxBadge}</td>
+          <td>
+            <div class="table-price-wrap">
+              ${oldPriceHtml}
+              <span class="table-price">${formatPrice(p.price)} MDL</span>
+            </div>
+          </td>
+          <td>
+            <span class="stock-val">${p.stock}</span>
+            ${stockBadge}
+          </td>
           <td><span class="table-status ${statusClass}">${statusText}</span></td>
           <td>
             <div class="table-actions">
-              <button class="btn-icon" title="Editează" onclick="adminActions.edit(${p.id})">
+              <!-- Comutare Rapidă Stoc -->
+              <button class="btn-icon btn-icon-stock ${inStock ? 'active' : 'inactive'}" 
+                      title="${inStock ? 'Marchează Fără Stoc (0)' : 'Marchează În Stoc (15)'}" 
+                      onclick="adminActions.toggleStock(${p.id})">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+              </button>
+              <!-- Editare Stoc Numeric -->
+              <button class="btn-icon" title="Editează stocul numeric" onclick="adminActions.editStock(${p.id})">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                  <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>
+                </svg>
+              </button>
+              <!-- Editare Produs -->
+              <button class="btn-icon" title="Editează datele produsului" onclick="adminActions.edit(${p.id})">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
                   <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
               </button>
-              <button class="btn-icon" title="Modifică stoc" onclick="adminActions.stock(${p.id})">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-                  <line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
-                </svg>
-              </button>
-              <button class="btn-icon btn-icon-danger" title="Șterge" onclick="adminActions.confirmDelete(${p.id})">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <!-- Ștergere Produs -->
+              <button class="btn-icon btn-icon-danger" title="Șterge produsul" onclick="adminActions.deletePrompt(${p.id})">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="3 6 5 6 21 6"/>
                   <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
                 </svg>
@@ -322,223 +475,420 @@
   }
 
   // ──────────────────────────────────────
-  //  Sidebar / Navigation
+  //  Orders Table Rendering & Controls
   // ──────────────────────────────────────
-  function setupSidebar() {
-    sidebarToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-    });
-
-    sidebarLinks.forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const view = link.dataset.view;
-
-        sidebarLinks.forEach(l => l.classList.remove('active'));
-        link.classList.add('active');
-
-        switchView(view);
-        sidebar.classList.remove('open');
-      });
-    });
+  function setupOrderControls() {
+    if (ordersSearch) ordersSearch.addEventListener('input', () => renderOrdersTable());
+    if (ordersStatusFilter) ordersStatusFilter.addEventListener('change', () => renderOrdersTable());
   }
 
-  function switchView(view) {
-    viewProducts.style.display = 'none';
-    viewAdd.style.display = 'none';
+  function renderOrdersTable() {
+    if (!ordersTableBody) return;
 
-    if (view === 'products') {
-      viewProducts.style.display = 'block';
-      viewTitle.textContent = 'Gestionare Produse';
-      loadProducts();
-    } else if (view === 'add') {
-      viewAdd.style.display = 'block';
-      viewTitle.textContent = editingProductId ? 'Editează Produs' : 'Adaugă Produs Nou';
-      if (!editingProductId) resetForm();
+    const searchVal = ordersSearch ? ordersSearch.value.trim().toLowerCase() : '';
+    const statusVal = ordersStatusFilter ? ordersStatusFilter.value : '';
+
+    let filtered = orders;
+
+    if (statusVal) {
+      filtered = filtered.filter(o => o.status === statusVal);
+    }
+
+    if (searchVal) {
+      filtered = filtered.filter(o =>
+        (o.customer_name && o.customer_name.toLowerCase().includes(searchVal)) ||
+        (o.customer_phone && o.customer_phone.toLowerCase().includes(searchVal)) ||
+        (o.delivery_address && o.delivery_address.toLowerCase().includes(searchVal))
+      );
+    }
+
+    if (filtered.length === 0) {
+      ordersTableBody.innerHTML = `
+        <tr>
+          <td colspan="9" style="text-align:center; padding:48px 20px; color:var(--text-muted);">
+            Nicio comandă găsită conform căutării.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    ordersTableBody.innerHTML = filtered.map(o => {
+      const dateStr = formatDate(o.created_at);
+      const statusClass = getStatusClass(o.status);
+
+      return `
+        <tr data-id="${o.id}">
+          <td class="order-id">#${o.id}</td>
+          <td class="order-customer">${escapeHTML(o.customer_name || 'Client')}</td>
+          <td class="order-phone">
+            <a href="tel:${escapeHTML(o.customer_phone || '')}" style="color:var(--primary); font-weight:600;">
+              ${escapeHTML(o.customer_phone || '')}
+            </a>
+          </td>
+          <td class="order-address">${escapeHTML(o.delivery_address || '')}</td>
+          <td class="order-items-cell">${escapeHTML(o.items || '')}</td>
+          <td class="order-total">${formatPrice(o.total_price)} MDL</td>
+          <td class="order-date">${dateStr}</td>
+          <td>
+            <select class="order-status-select ${statusClass}" onchange="adminActions.changeOrderStatus(${o.id}, this.value)">
+              <option value="Nouă" ${o.status === 'Nouă' ? 'selected' : ''}>Nouă</option>
+              <option value="În procesare" ${o.status === 'În procesare' ? 'selected' : ''}>În procesare</option>
+              <option value="Trimisă" ${o.status === 'Trimisă' ? 'selected' : ''}>Trimisă</option>
+              <option value="Finalizată" ${o.status === 'Finalizată' ? 'selected' : ''}>Finalizată</option>
+              <option value="Anulată" ${o.status === 'Anulată' ? 'selected' : ''}>Anulată</option>
+            </select>
+          </td>
+          <td style="text-align:right;">
+            <button class="btn-icon btn-icon-danger" title="Șterge comanda" onclick="adminActions.deleteOrderPrompt(${o.id})">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+              </svg>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function getStatusClass(status) {
+    switch (status) {
+      case 'Nouă': return 'status-noua';
+      case 'În procesare': return 'status-in-procesare';
+      case 'Trimisă': return 'status-trimisa';
+      case 'Finalizată': return 'status-finalizata';
+      case 'Anulată': return 'status-anulata';
+      default: return '';
+    }
+  }
+
+  function formatDate(isoStr) {
+    if (!isoStr) return '';
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleDateString('ro-RO', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return isoStr;
     }
   }
 
   // ──────────────────────────────────────
-  //  Product Form
+  //  Product Form (Add / Edit)
   // ──────────────────────────────────────
   function setupForm() {
+    prodPrescription.addEventListener('change', () => {
+      prescriptionLabelText.textContent = prodPrescription.checked
+        ? 'Da (necesită rețetă medicală)'
+        : 'Nu (fără rețetă)';
+    });
+
     productForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const data = {
-        name: document.getElementById('prod-name').value.trim(),
-        description: document.getElementById('prod-description').value.trim(),
-        price: parseFloat(document.getElementById('prod-price').value),
-        stock: parseInt(document.getElementById('prod-stock').value),
-        image: document.getElementById('prod-image').value.trim(),
-        category: document.getElementById('prod-category').value.trim() || 'General'
-      };
+      const name = prodName.value.trim();
+      const category = prodCategory.value;
+      const price = parseFloat(prodPrice.value);
+      const oldPriceVal = prodOldPrice.value.trim();
+      const old_price = oldPriceVal ? parseFloat(oldPriceVal) : null;
+      const stock = parseInt(prodStock.value, 10);
+      const requires_prescription = prodPrescription.checked;
+      const image = prodImage.value.trim();
+      const description = prodDescription.value.trim();
 
-      if (!data.name || isNaN(data.price) || isNaN(data.stock)) {
-        showToast('Completează câmpurile obligatorii.', 'error');
+      if (!name || isNaN(price) || isNaN(stock)) {
+        showToast('Completează denumirea, prețul și stocul corect.', 'error');
         return;
       }
 
+      const body = {
+        name,
+        category,
+        price,
+        old_price,
+        stock,
+        requires_prescription,
+        image,
+        description
+      };
+
       try {
+        let res;
         if (editingProductId) {
-          await updateProductAPI(editingProductId, data);
-          showToast('Produs actualizat cu succes!', 'success');
+          res = await fetch(`/api/admin/products/${editingProductId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(body)
+          });
         } else {
-          await createProduct(data);
-          showToast('Produs adăugat cu succes!', 'success');
+          res = await fetch('/api/admin/products', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(body)
+          });
         }
 
-        editingProductId = null;
+        if (res.status === 401) return showLogin();
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Eroare la salvare.');
+        }
+
+        showToast(editingProductId ? 'Produsul a fost actualizat cu succes!' : 'Produsul nou a fost adăugat!', 'success');
         resetForm();
-        switchToProducts();
+        switchView('products');
+        await loadProducts();
+
       } catch (err) {
-        showToast(err.message || 'Eroare la salvarea produsului.', 'error');
+        showToast(err.message || 'Eroare la salvare.', 'error');
       }
     });
 
     formCancel.addEventListener('click', () => {
-      editingProductId = null;
       resetForm();
-      switchToProducts();
+      switchView('products');
     });
   }
 
   function resetForm() {
-    productForm.reset();
+    editingProductId = null;
     editIdField.value = '';
+    productForm.reset();
     formTitle.textContent = 'Adaugă Produs Nou';
-    document.getElementById('prod-category').value = 'General';
-  }
-
-  function populateForm(product) {
-    document.getElementById('prod-name').value = product.name || '';
-    document.getElementById('prod-description').value = product.description || '';
-    document.getElementById('prod-price').value = product.price || '';
-    document.getElementById('prod-stock').value = product.stock || 0;
-    document.getElementById('prod-image').value = product.image || '';
-    document.getElementById('prod-category').value = product.category || 'General';
-  }
-
-  function switchToProducts() {
-    sidebarLinks.forEach(l => l.classList.remove('active'));
-    document.getElementById('sidebar-products').classList.add('active');
-    switchView('products');
+    prescriptionLabelText.textContent = 'Nu (fără rețetă)';
+    prodPrescription.checked = false;
   }
 
   // ──────────────────────────────────────
-  //  Modals
+  //  Modals & Actions
   // ──────────────────────────────────────
   function setupModals() {
     // Stock modal
-    stockModalClose.addEventListener('click', closeStockModal);
-    stockCancel.addEventListener('click', closeStockModal);
+    stockModalClose.addEventListener('click', () => stockModal.style.display = 'none');
+    stockCancel.addEventListener('click', () => stockModal.style.display = 'none');
     stockSave.addEventListener('click', saveStock);
 
-    // Delete modal
-    deleteModalClose.addEventListener('click', closeDeleteModal);
-    deleteCancel.addEventListener('click', closeDeleteModal);
+    // Delete product modal
+    deleteModalClose.addEventListener('click', () => deleteModal.style.display = 'none');
+    deleteCancel.addEventListener('click', () => deleteModal.style.display = 'none');
     deleteConfirm.addEventListener('click', confirmDeleteProduct);
 
-    // Close on overlay click
-    stockModal.addEventListener('click', (e) => {
-      if (e.target === stockModal) closeStockModal();
-    });
-    deleteModal.addEventListener('click', (e) => {
-      if (e.target === deleteModal) closeDeleteModal();
-    });
-  }
+    // Delete order modal
+    deleteOrderClose.addEventListener('click', () => deleteOrderModal.style.display = 'none');
+    deleteOrderCancel.addEventListener('click', () => deleteOrderModal.style.display = 'none');
+    deleteOrderConfirm.addEventListener('click', confirmDeleteOrder);
 
-  function openStockModal(product) {
-    stockProductId = product.id;
-    stockProductName.textContent = product.name;
-    stockInput.value = product.stock;
-    stockModal.style.display = 'flex';
-    stockInput.focus();
-  }
-
-  function closeStockModal() {
-    stockModal.style.display = 'none';
-    stockProductId = null;
+    // Click outside modal to close
+    window.addEventListener('click', (e) => {
+      if (e.target === stockModal) stockModal.style.display = 'none';
+      if (e.target === deleteModal) deleteModal.style.display = 'none';
+      if (e.target === deleteOrderModal) deleteOrderModal.style.display = 'none';
+    });
   }
 
   async function saveStock() {
-    const newStock = parseInt(stockInput.value);
-    if (isNaN(newStock) || newStock < 0) {
-      showToast('Introdu un număr valid.', 'error');
+    const val = parseInt(stockInput.value, 10);
+    if (isNaN(val) || val < 0) {
+      showToast('Introdu un număr valid de bucăți.', 'error');
       return;
     }
 
     try {
-      await updateStockAPI(stockProductId, newStock);
-      showToast('Stocul a fost actualizat!', 'success');
-      closeStockModal();
+      const res = await fetch(`/api/admin/products/${stockProductId}/stock`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ stock: val })
+      });
+
+      if (res.status === 401) return showLogin();
+      if (!res.ok) throw new Error();
+
+      showToast('Stocul a fost actualizat cu succes!', 'success');
+      stockModal.style.display = 'none';
       await loadProducts();
-    } catch (err) {
-      showToast(err.message || 'Eroare la actualizarea stocului.', 'error');
+    } catch {
+      showToast('Eroare la actualizarea stocului.', 'error');
     }
-  }
-
-  function openDeleteModal(product) {
-    deleteProductId = product.id;
-    deleteProductName.textContent = product.name;
-    deleteModal.style.display = 'flex';
-  }
-
-  function closeDeleteModal() {
-    deleteModal.style.display = 'none';
-    deleteProductId = null;
   }
 
   async function confirmDeleteProduct() {
     try {
-      await deleteProductAPI(deleteProductId);
-      showToast('Produs șters cu succes.', 'success');
-      closeDeleteModal();
+      const res = await fetch(`/api/admin/products/${deleteProductId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.status === 401) return showLogin();
+      if (!res.ok) throw new Error();
+
+      showToast('Produsul a fost șters.', 'success');
+      deleteModal.style.display = 'none';
       await loadProducts();
-    } catch (err) {
-      showToast(err.message || 'Eroare la ștergerea produsului.', 'error');
+    } catch {
+      showToast('Eroare la ștergerea produsului.', 'error');
+    }
+  }
+
+  async function confirmDeleteOrder() {
+    try {
+      const res = await fetch(`/api/admin/orders/${deleteOrderId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.status === 401) return showLogin();
+      if (!res.ok) throw new Error();
+
+      showToast('Comanda a fost ștearsă.', 'success');
+      deleteOrderModal.style.display = 'none';
+      await loadOrders();
+    } catch {
+      showToast('Eroare la ștergerea comenzii.', 'error');
     }
   }
 
   // ──────────────────────────────────────
-  //  Admin Search
+  //  Global Actions for Table Buttons
   // ──────────────────────────────────────
-  function setupAdminSearch() {
-    let timer;
-    adminSearch.addEventListener('input', (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        renderTable(e.target.value.trim());
-      }, 200);
-    });
-  }
+  window.adminActions = {
+    edit(id) {
+      const p = products.find(prod => prod.id === id);
+      if (!p) return;
+
+      editingProductId = id;
+      editIdField.value = id;
+      prodName.value = p.name;
+      prodCategory.value = p.category || 'General';
+      prodPrice.value = p.price;
+      prodOldPrice.value = p.old_price !== null && p.old_price !== undefined ? p.old_price : '';
+      prodStock.value = p.stock;
+      prodPrescription.checked = Boolean(p.requires_prescription);
+      prescriptionLabelText.textContent = prodPrescription.checked
+        ? 'Da (necesită rețetă medicală)'
+        : 'Nu (fără rețetă)';
+      prodImage.value = p.image || '';
+      prodDescription.value = p.description || '';
+
+      formTitle.textContent = 'Editează Produsul';
+      switchView('add');
+    },
+
+    async toggleStock(id) {
+      try {
+        const res = await fetch(`/api/admin/products/${id}/toggle-stock`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) return showLogin();
+        if (!res.ok) throw new Error();
+
+        const updated = await res.json();
+        const msg = updated.stock > 0
+          ? `Produsul "${updated.name}" este acum În Stoc (${updated.stock} buc).`
+          : `Produsul "${updated.name}" a fost marcat ca Fără Stoc (0 buc).`;
+
+        showToast(msg, updated.stock > 0 ? 'success' : 'info');
+        await loadProducts();
+      } catch (err) {
+        showToast('Eroare la comutarea stocului.', 'error');
+      }
+    },
+
+    editStock(id) {
+      const p = products.find(prod => prod.id === id);
+      if (!p) return;
+      stockProductId = id;
+      stockProductName.textContent = p.name;
+      stockInput.value = p.stock;
+      stockModal.style.display = 'flex';
+      stockInput.focus();
+    },
+
+    deletePrompt(id) {
+      const p = products.find(prod => prod.id === id);
+      if (!p) return;
+      deleteProductId = id;
+      deleteProductName.textContent = `${p.name} (${p.category})`;
+      deleteModal.style.display = 'flex';
+    },
+
+    deleteOrderPrompt(id) {
+      const o = orders.find(ord => ord.id === id);
+      if (!o) return;
+      deleteOrderId = id;
+      deleteOrderInfo.textContent = `Comanda #${o.id} — ${o.customer_name} (${formatPrice(o.total_price)} MDL)`;
+      deleteOrderModal.style.display = 'flex';
+    },
+
+    async changeOrderStatus(id, newStatus) {
+      try {
+        const res = await fetch(`/api/admin/orders/${id}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+
+        if (res.status === 401) return showLogin();
+        if (!res.ok) throw new Error();
+
+        showToast(`Statusul comenzii #${id} a fost schimbat în "${newStatus}".`, 'success');
+        await loadOrders();
+      } catch {
+        showToast('Eroare la actualizarea statusului comenzii.', 'error');
+      }
+    }
+  };
 
   // ──────────────────────────────────────
-  //  Toast Notifications
+  //  Toast Utility
   // ──────────────────────────────────────
   function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.innerHTML = `
       <span>${escapeHTML(message)}</span>
-      <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+      <span class="toast-close">&times;</span>
     `;
+
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+      toast.remove();
+    });
+
     toastContainer.appendChild(toast);
+
     setTimeout(() => {
-      if (toast.parentElement) {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
-        toast.style.transition = 'all 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-      }
-    }, 4000);
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-10px)';
+      toast.style.transition = 'all 0.3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
   }
 
   // ──────────────────────────────────────
   //  Helpers
   // ──────────────────────────────────────
-  function formatPrice(price) {
-    return parseFloat(price).toFixed(2);
+  function formatPrice(num) {
+    return parseFloat(num).toFixed(2);
   }
 
   function escapeHTML(str) {
@@ -547,36 +897,5 @@
     div.textContent = str;
     return div.innerHTML;
   }
-
-  // ──────────────────────────────────────
-  //  Global Actions (called from inline onclick)
-  // ──────────────────────────────────────
-  window.adminActions = {
-    edit(id) {
-      const product = products.find(p => p.id === id);
-      if (!product) return;
-
-      editingProductId = id;
-      formTitle.textContent = `Editează: ${product.name}`;
-      populateForm(product);
-
-      sidebarLinks.forEach(l => l.classList.remove('active'));
-      document.getElementById('sidebar-add').classList.add('active');
-      switchView('add');
-      viewTitle.textContent = 'Editează Produs';
-    },
-
-    stock(id) {
-      const product = products.find(p => p.id === id);
-      if (!product) return;
-      openStockModal(product);
-    },
-
-    confirmDelete(id) {
-      const product = products.find(p => p.id === id);
-      if (!product) return;
-      openDeleteModal(product);
-    }
-  };
 
 })();

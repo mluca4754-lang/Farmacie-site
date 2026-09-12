@@ -67,7 +67,7 @@ Serverul va porni pe `http://localhost:3000`
    - `ADMIN_PASSWORD` — parola de administrator
    - `JWT_SECRET` — un string secret aleator lung
    - `DATABASE_URL` — șirul de conexiune PostgreSQL (din Supabase: *Project Settings* → *Database* → *Connection string* (URI) sau din Render PostgreSQL)
-5. **Inițializare automată**: La pornire, serverul detectează `DATABASE_URL`, se conectează prin pachetul `pg` cu suport SSL și creează automat tabelele `products` și `admins`, populându-le inițial dacă sunt goale.
+5. **Inițializare automată**: La pornire, serverul detectează `DATABASE_URL`, se conectează prin pachetul `pg` cu suport SSL și creează/migrează automat tabelele `products`, `admins` și `orders`, populându-le inițial dacă sunt goale.
 
 ## 🔒 API Endpoints
 
@@ -76,19 +76,26 @@ Serverul va porni pe `http://localhost:3000`
 |--------|----------|-----------|
 | GET | `/api/products` | Lista tuturor produselor |
 | GET | `/api/products/:id` | Detalii produs |
+| POST | `/api/orders` | Plasare comandă nouă |
 
 ### Autentificare
 | Metodă | Endpoint | Descriere |
 |--------|----------|-----------|
 | POST | `/api/login` | Autentificare admin (body: `{ password }`) |
+| GET | `/api/admin/verify` | Verificare validitate token JWT |
 
 ### Admin (necesită token JWT)
 | Metodă | Endpoint | Descriere |
 |--------|----------|-----------|
-| POST | `/api/admin/products` | Adaugă produs nou |
-| PUT | `/api/admin/products/:id` | Actualizează produs |
-| PATCH | `/api/admin/products/:id/stock` | Modifică stocul |
+| GET | `/api/admin/stats` | Statistici dashboard (produse, comenzi noi, stoc critic, stoc 0) |
+| POST | `/api/admin/products` | Adaugă produs nou (cu preț vechi și status rețetă) |
+| PUT | `/api/admin/products/:id` | Actualizează produs complet |
+| PATCH | `/api/admin/products/:id/stock` | Modifică numeric stocul |
+| PATCH | `/api/admin/products/:id/toggle-stock` | Comutare rapidă În Stoc / Fără Stoc |
 | DELETE | `/api/admin/products/:id` | Șterge produs |
+| GET | `/api/admin/orders` | Lista tuturor comenzilor primite |
+| PATCH | `/api/admin/orders/:id/status` | Actualizează status comandă (Nouă, În procesare, Trimisă, Finalizată, Anulată) |
+| DELETE | `/api/admin/orders/:id` | Șterge comandă |
 
 ## 📄 Licență
 

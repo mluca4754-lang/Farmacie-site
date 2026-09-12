@@ -159,6 +159,7 @@
           <img class="product-card-img" src="${escapeHTML(imgSrc)}" alt="${escapeHTML(product.name)}" loading="lazy"
                onerror="this.src='${defaultImg}'">
           <span class="product-card-badge ${badgeClass}">${badgeText}</span>
+          ${product.requires_prescription ? '<span class="product-card-rx">💊 Rețetă</span>' : ''}
           ${product.category ? `<span class="product-card-category">${escapeHTML(product.category)}</span>` : ''}
         </div>
         <div class="product-card-body">
@@ -166,6 +167,7 @@
           ${product.description ? `<p class="product-card-desc">${escapeHTML(product.description)}</p>` : ''}
           <div class="product-card-footer">
             <div class="product-card-price">
+              ${product.old_price ? `<span class="product-old-price">${formatPrice(product.old_price)} MDL</span>` : ''}
               ${formatPrice(product.price)} <span>MDL</span>
             </div>
             <div class="product-card-stock">

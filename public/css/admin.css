@@ -196,6 +196,7 @@
   font-weight: 500;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
+  position: relative;
 }
 
 .sidebar-link:hover {
@@ -207,6 +208,16 @@
   color: #047857;
   background: #ecfdf5;
   font-weight: 600;
+}
+
+.sidebar-badge {
+  margin-left: auto;
+  background: #059669;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
 }
 
 .sidebar-footer {
@@ -263,22 +274,22 @@
   gap: 8px;
 }
 
-/* ─── Stats Row ─── */
+/* ─── 1. Stats Row (3 Carduri Rapide) ─── */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
   background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 20px;
+  padding: 22px 24px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-fast);
 }
@@ -286,11 +297,12 @@
 .stat-card:hover {
   border-color: var(--border-color-hover);
   box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .stat-card-icon {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -304,42 +316,105 @@
 }
 
 .stat-icon-green {
-  background: rgba(22, 163, 74, 0.1);
-  color: #16a34a;
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
 }
 
-.stat-icon-red {
-  background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
-}
-
-.stat-icon-purple {
-  background: rgba(124, 58, 237, 0.1);
-  color: #7c3aed;
+.stat-icon-amber {
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
 }
 
 .stat-card-number {
   display: block;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--text-primary);
+  line-height: 1.2;
 }
 
 .stat-card-label {
   font-size: 13px;
+  font-weight: 500;
   color: var(--text-muted);
+  margin-top: 2px;
 }
 
-/* ─── Admin Table ─── */
-.admin-table-header {
+/* ─── Alerta Vizuală Stoc 0 (Roșie) ─── */
+.out-of-stock-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 5px solid #dc2626;
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  animation: fadeIn 0.3s ease;
+}
+
+.alert-icon {
+  color: #dc2626;
+  flex-shrink: 0;
+  display: flex;
+}
+
+.alert-content {
+  flex: 1;
+}
+
+.alert-content strong {
+  display: block;
+  font-size: 14px;
+  color: #991b1b;
+}
+
+.alert-content span {
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.btn-outline-danger {
+  background: #ffffff;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  font-weight: 600;
+}
+
+.btn-outline-danger:hover {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+/* ─── Table Controls (Search & Category Filter) ─── */
+.admin-table-controls {
+  display: flex;
+  gap: 16px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
-.admin-search {
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 260px;
+}
+
+.control-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.admin-control-input {
   width: 100%;
-  max-width: 360px;
-  padding: 10px 16px;
+  padding: 11px 16px 11px 42px;
   background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -350,13 +425,36 @@
   transition: all var(--transition-fast);
 }
 
-.admin-search::placeholder { color: var(--text-muted); }
-
-.admin-search:focus {
+.admin-control-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
+.filter-wrap {
+  min-width: 220px;
+}
+
+.admin-control-select {
+  width: 100%;
+  padding: 11px 16px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.admin-control-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* ─── Admin Table ─── */
 .admin-table-wrap {
   background: #ffffff;
   border: 1px solid var(--border-color);
@@ -376,7 +474,7 @@
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   background: #f8fafc;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border-color);
@@ -384,7 +482,7 @@
 }
 
 .admin-table td {
-  padding: 12px 16px;
+  padding: 14px 16px;
   font-size: 14px;
   border-bottom: 1px solid var(--border-color);
   vertical-align: middle;
@@ -409,6 +507,7 @@
   object-fit: cover;
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
+  border: 1px solid #e2e8f0;
 }
 
 .table-product-name {
@@ -419,10 +518,11 @@
 .table-product-desc {
   font-size: 12px;
   color: var(--text-muted);
-  max-width: 200px;
+  max-width: 220px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 2px;
 }
 
 .table-category {
@@ -436,14 +536,75 @@
   color: var(--text-secondary);
 }
 
+/* Prețuri */
+.table-price-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
 .table-price {
   font-weight: 700;
   color: var(--primary);
   white-space: nowrap;
 }
 
-.table-stock {
+.table-old-price {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* Stoc & Alerte Stoc */
+.stock-val {
+  font-weight: 700;
+}
+
+.stock-critical-badge {
+  display: inline-block;
+  font-size: 11px;
   font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  margin-left: 4px;
+}
+
+.stock-empty-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  margin-left: 4px;
+}
+
+/* Rețetă medicală badges */
+.rx-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rx-required {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.rx-free {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
 }
 
 .table-status {
@@ -472,26 +633,117 @@
 .table-actions {
   display: flex;
   gap: 6px;
+  justify-content: flex-end;
 }
 
-/* ─── Admin Loading ─── */
-.admin-loading {
-  text-align: center;
-  padding: 60px 20px;
+/* Buton Toggle Stoc Rapid */
+.btn-icon-stock {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+}
+
+.btn-icon-stock.active {
+  color: #059669;
+  border-color: #059669;
+  background: #ecfdf5;
+}
+
+.btn-icon-stock.inactive {
+  color: #dc2626;
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+/* ─── Orders Table & Status Selector ─── */
+.order-id {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.order-customer {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.order-phone {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.order-address {
+  font-size: 12px;
   color: var(--text-muted);
+  max-width: 180px;
 }
 
-.admin-loading .spinner {
-  margin: 0 auto 12px;
+.order-items-cell {
+  font-size: 13px;
+  color: var(--text-secondary);
+  max-width: 220px;
 }
 
-/* ─── Form Card ─── */
+.order-total {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.order-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.order-status-select {
+  padding: 6px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+}
+
+.status-noua {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.status-in-procesare {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.status-trimisa {
+  background: #f3e8ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+
+.status-finalizata {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.status-anulata {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+/* ─── Form Card & Prescription Switch ─── */
 .form-card {
   background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 32px;
-  max-width: 720px;
+  max-width: 760px;
   box-shadow: var(--shadow-sm);
 }
 
@@ -553,13 +805,85 @@
   gap: 16px;
 }
 
+/* Switch Toggle Rețetă */
+.toggle-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.prescription-switch-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  transition: .3s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+input:checked + .slider {
+  background-color: #059669;
+}
+
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+.switch-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
 .form-actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  padding-top: 16px;
+  padding-top: 20px;
   border-top: 1px solid var(--border-color);
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 /* ─── Modals ─── */
@@ -650,7 +974,7 @@
 
 /* ─── Admin Responsive ─── */
 @media (max-width: 1024px) {
-  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .stats-row { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 768px) {
@@ -674,4 +998,5 @@
   .form-row { grid-template-columns: 1fr; }
 
   .login-card { padding: 32px 24px; }
+  .admin-table-controls { flex-direction: column; }
 }
