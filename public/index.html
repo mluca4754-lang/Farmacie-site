@@ -8,15 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <!-- ═══════ HEADER ═══════ -->
   <header class="header" id="header">
     <div class="header-inner">
-      <a href="/" class="logo" id="logo">
+      <a href="index.html" class="logo" id="logo">
         <div class="logo-icon">
-          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 40px; height: 40px; display: block;">
             <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#grad1)"/>
             <path d="M20 10V30M10 20H30" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
             <defs>
@@ -36,7 +36,7 @@
         <a href="#products" class="nav-link" id="nav-products">Produse</a>
         <a href="#categories" class="nav-link" id="nav-categories">Categorii</a>
         <a href="#contact" class="nav-link" id="nav-contact">Contact</a>
-        <a href="/admin" class="nav-link nav-admin" id="nav-admin">
+        <a href="admin.html" class="nav-link nav-admin" id="nav-admin">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -53,45 +53,36 @@
   <!-- ═══════ HERO SECTION ═══════ -->
   <section class="hero" id="hero">
     <div class="hero-bg">
-      <div class="hero-orb hero-orb-1"></div>
-      <div class="hero-orb hero-orb-2"></div>
-      <div class="hero-orb hero-orb-3"></div>
+      <img src="images/hero-bg.jpg" alt="Farmacia Moldova" class="hero-bg-img" id="hero-bg-img" onerror="this.onerror=null; this.src='hero-bg.jpg';">
+      <div class="hero-overlay"></div>
     </div>
-    <div class="hero-content">
-      <div class="hero-badge">🏥 Farmacie autorizată</div>
+    <div class="container hero-container">
+      <div class="hero-content">
+      <p class="hero-eyebrow">Farmacia ta de încredere din Chișinău</p>
       <h1 class="hero-title">
-        Medicamente de calitate<br>
-        <span class="hero-gradient">la prețuri accesibile</span>
+        Medicamente și produse<br>
+        farmaceutice cu livrare
       </h1>
       <p class="hero-desc">
-        Gamă completă de medicamente, vitamine și produse farmaceutice.
-        Prețuri în lei moldovenești (MDL). Livrare în toată Republica Moldova.
+        Consultă catalogul nostru cu disponibilitate actualizată. Toate prețurile sunt afișate în lei moldovenești.
       </p>
       <div class="hero-actions">
-        <a href="#products" class="btn btn-primary btn-lg" id="hero-cta">
-          Vezi Produsele
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-          </svg>
-        </a>
-        <a href="#contact" class="btn btn-outline btn-lg" id="hero-contact">Contactează-ne</a>
+        <a href="#products" class="btn btn-primary btn-lg" id="hero-cta">Catalog produse</a>
+        <a href="#contact" class="btn btn-outline btn-lg" id="hero-contact">Contact</a>
       </div>
       <div class="hero-stats">
         <div class="hero-stat">
           <span class="hero-stat-number" id="stat-products">0</span>
-          <span class="hero-stat-label">Produse</span>
-        </div>
-        <div class="hero-stat">
-          <span class="hero-stat-number">24/7</span>
-          <span class="hero-stat-label">Suport</span>
+          <span class="hero-stat-label">produse</span>
         </div>
         <div class="hero-stat">
           <span class="hero-stat-number">MDL</span>
-          <span class="hero-stat-label">Lei Moldovenești</span>
+          <span class="hero-stat-label">prețuri oficiale</span>
         </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
   <!-- ═══════ FILTER BAR ═══════ -->
   <section class="filter-section" id="categories">
@@ -112,8 +103,8 @@
   <section class="products-section" id="products">
     <div class="container">
       <div class="section-header">
-        <h2 class="section-title">Produsele Noastre</h2>
-        <p class="section-subtitle">Medicamente și produse farmaceutice de înaltă calitate</p>
+        <h2 class="section-title">Catalog produse</h2>
+        <p class="section-subtitle">Disponibilitatea și prețurile sunt actualizate direct din farmacie</p>
       </div>
       <div class="products-grid" id="products-grid">
         <!-- Products loaded by JS -->
@@ -139,7 +130,7 @@
         <div class="footer-brand">
           <div class="logo">
             <div class="logo-icon">
-              <svg viewBox="0 0 40 40" fill="none">
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 40px; height: 40px;">
                 <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#grad2)"/>
                 <path d="M20 10V30M10 20H30" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
                 <defs>
@@ -152,16 +143,20 @@
             </div>
             <div class="logo-text">
               <span class="logo-name">Farmacia Moldova</span>
+              <span class="logo-sub">Sănătatea ta, grija noastră</span>
             </div>
           </div>
-          <p class="footer-desc">Farmacie autorizată din Republica Moldova. Oferim medicamente de calitate la prețuri accesibile.</p>
+          <p class="footer-desc">
+            Farmacie modernă dedicată sănătății tale. Oferim o gamă variată de medicamente,
+            suplimente și produse de îngrijire cu stoc live actualizat direct din farmacie.
+          </p>
         </div>
         <div class="footer-col">
-          <h4>Contact</h4>
+          <h4>Contact Rapid</h4>
           <ul>
-            <li>📞 +373 22 123 456</li>
-            <li>📧 contact@farmacia.md</li>
-            <li>📍 Chișinău, str. Ștefan cel Mare 1</li>
+            <li>📍 Chișinău, Bd. Ștefan cel Mare 100</li>
+            <li>📞 <a href="tel:+37322123456">+373 22 123 456</a></li>
+            <li>✉️ <a href="mailto:contact@farmacia-moldova.md">contact@farmacia-moldova.md</a></li>
           </ul>
         </div>
         <div class="footer-col">
@@ -177,7 +172,7 @@
           <ul>
             <li><a href="#">Politica de confidențialitate</a></li>
             <li><a href="#">Termeni și condiții</a></li>
-            <li><a href="/admin">Panou administrare</a></li>
+            <li><a href="admin.html">Panou administrare</a></li>
           </ul>
         </div>
       </div>

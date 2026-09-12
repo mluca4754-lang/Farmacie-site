@@ -63,6 +63,7 @@ function formatProduct(row) {
   return {
     ...row,
     id: parseInt(row.id, 10),
+    barcode: row.barcode ? String(row.barcode).trim() : '',
     price: parseFloat(row.price),
     old_price: row.old_price !== null && row.old_price !== undefined && row.old_price !== '' ? parseFloat(row.old_price) : null,
     stock: parseInt(row.stock, 10),
@@ -89,11 +90,12 @@ function formatOrder(row) {
 async function initDatabase() {
   if (cleanDatabaseUrl) {
     try {
-      // 1. Tabela products cu noile coloane old_price și requires_prescription
+      // 1. Tabela products cu coloanele barcode, old_price și requires_prescription
       await pool.query(`
         CREATE TABLE IF NOT EXISTS products (
           id SERIAL PRIMARY KEY,
           name VARCHAR(255) NOT NULL,
+          barcode VARCHAR(100) DEFAULT '',
           description TEXT DEFAULT '',
           price NUMERIC(10,2) NOT NULL,
           old_price NUMERIC(10,2) DEFAULT NULL,
@@ -109,6 +111,7 @@ async function initDatabase() {
       await pool.query(`
         ALTER TABLE products ADD COLUMN IF NOT EXISTS old_price NUMERIC(10,2) DEFAULT NULL;
         ALTER TABLE products ADD COLUMN IF NOT EXISTS requires_prescription BOOLEAN DEFAULT FALSE;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR(100) DEFAULT '';
       `);
 
       // 2. Tabela admins pentru administrare
@@ -152,6 +155,7 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
+        barcode TEXT DEFAULT '',
         description TEXT DEFAULT '',
         price REAL NOT NULL,
         old_price REAL DEFAULT NULL,
@@ -185,6 +189,7 @@ async function initDatabase() {
     // Migrări SQLite tolerante la erori dacă există coloane lipsă
     try { sqliteDb.exec('ALTER TABLE products ADD COLUMN old_price REAL DEFAULT NULL;'); } catch (e) {}
     try { sqliteDb.exec('ALTER TABLE products ADD COLUMN requires_prescription INTEGER DEFAULT 0;'); } catch (e) {}
+    try { sqliteDb.exec("ALTER TABLE products ADD COLUMN barcode TEXT DEFAULT '';"); } catch (e) {}
 
     console.log('✅ Tabelele SQLite ("products", "admins", "orders") sunt pregătite.');
   }
@@ -219,48 +224,50 @@ async function getProductById(id) {
 }
 
 /**
- * Adaugă un produs nou cu toate câmpurile cerute.
+ * Adaugă un produs nou cu toate câmpurile cerute (inclusiv cod de bare).
  */
-async function addProduct({ name, description, price, old_price, stock, image, category, requires_prescription }) {
+async function addProduct({ name, barcode, description, price, old_price, stock, image, category, requires_prescription }) {
   const parsedOldPrice = old_price !== undefined && old_price !== null && old_price !== '' ? parseFloat(old_price) : null;
   const parsedStock = parseInt(stock, 10) || 0;
   const parsedPrice = parseFloat(price) || 0;
+  const parsedBarcode = barcode ? String(barcode).trim() : '';
   const hasPrescription = Boolean(requires_prescription === true || requires_prescription === 1 || requires_prescription === 'true');
 
   if (cleanDatabaseUrl) {
     const result = await pool.query(
-      'INSERT INTO products (name, description, price, old_price, stock, image, category, requires_prescription) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [name, description || '', parsedPrice, parsedOldPrice, parsedStock, image || '', category || 'General', hasPrescription]
+      'INSERT INTO products (name, barcode, description, price, old_price, stock, image, category, requires_prescription) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      [name, parsedBarcode, description || '', parsedPrice, parsedOldPrice, parsedStock, image || '', category || 'General', hasPrescription]
     );
     return formatProduct(result.rows[0]);
   } else {
     const stmt = sqliteDb.prepare(
-      'INSERT INTO products (name, description, price, old_price, stock, image, category, requires_prescription) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO products (name, barcode, description, price, old_price, stock, image, category, requires_prescription) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    const info = stmt.run(name, description || '', parsedPrice, parsedOldPrice, parsedStock, image || '', category || 'General', hasPrescription ? 1 : 0);
+    const info = stmt.run(name, parsedBarcode, description || '', parsedPrice, parsedOldPrice, parsedStock, image || '', category || 'General', hasPrescription ? 1 : 0);
     return formatProduct(sqliteDb.prepare('SELECT * FROM products WHERE id = ?').get(info.lastInsertRowid));
   }
 }
 
 /**
- * Actualizează un produs complet.
+ * Actualizează un produs complet (inclusiv cod de bare).
  */
-async function updateProduct(id, { name, description, price, old_price, stock, image, category, requires_prescription }) {
+async function updateProduct(id, { name, barcode, description, price, old_price, stock, image, category, requires_prescription }) {
   const parsedOldPrice = old_price !== undefined && old_price !== null && old_price !== '' ? parseFloat(old_price) : null;
   const parsedStock = parseInt(stock, 10) || 0;
   const parsedPrice = parseFloat(price) || 0;
+  const parsedBarcode = barcode !== undefined ? String(barcode).trim() : '';
   const hasPrescription = Boolean(requires_prescription === true || requires_prescription === 1 || requires_prescription === 'true');
 
   if (cleanDatabaseUrl) {
     const result = await pool.query(
-      'UPDATE products SET name=$1, description=$2, price=$3, old_price=$4, stock=$5, image=$6, category=$7, requires_prescription=$8 WHERE id=$9 RETURNING *',
-      [name, description, parsedPrice, parsedOldPrice, parsedStock, image, category, hasPrescription, id]
+      'UPDATE products SET name=$1, barcode=$2, description=$3, price=$4, old_price=$5, stock=$6, image=$7, category=$8, requires_prescription=$9 WHERE id=$10 RETURNING *',
+      [name, parsedBarcode, description, parsedPrice, parsedOldPrice, parsedStock, image, category, hasPrescription, id]
     );
     return formatProduct(result.rows[0]);
   } else {
     sqliteDb.prepare(
-      'UPDATE products SET name=?, description=?, price=?, old_price=?, stock=?, image=?, category=?, requires_prescription=? WHERE id=?'
-    ).run(name, description, parsedPrice, parsedOldPrice, parsedStock, image, category, hasPrescription ? 1 : 0, id);
+      'UPDATE products SET name=?, barcode=?, description=?, price=?, old_price=?, stock=?, image=?, category=?, requires_prescription=? WHERE id=?'
+    ).run(name, parsedBarcode, description, parsedPrice, parsedOldPrice, parsedStock, image, category, hasPrescription ? 1 : 0, id);
     return formatProduct(sqliteDb.prepare('SELECT * FROM products WHERE id = ?').get(id));
   }
 }
@@ -287,6 +294,45 @@ async function toggleStock(id) {
   if (!current) return null;
   const newStock = current.stock > 0 ? 0 : 15;
   return updateStock(id, newStock);
+}
+
+/**
+ * Vânzare rapidă la POS (-1 Vândut).
+ * Scade stocul atomic cu 1, fără să permită valori negative.
+ */
+async function sellProduct(id) {
+  if (cleanDatabaseUrl) {
+    const result = await pool.query(
+      'UPDATE products SET stock = GREATEST(0, stock - 1) WHERE id = $1 RETURNING *',
+      [id]
+    );
+    return formatProduct(result.rows[0]);
+  } else {
+    sqliteDb.prepare('UPDATE products SET stock = MAX(0, stock - 1) WHERE id = ?').run(id);
+    return formatProduct(sqliteDb.prepare('SELECT * FROM products WHERE id = ?').get(id));
+  }
+}
+
+/**
+ * Reaprovizionare marfă nouă (+N bucăți).
+ * Crește stocul atomic cu cantitatea specificată.
+ */
+async function restockProduct(id, quantity) {
+  const qty = parseInt(quantity, 10);
+  if (isNaN(qty) || qty <= 0) {
+    throw new Error('Cantitatea de reaprovizionare trebuie să fie un număr pozitiv.');
+  }
+
+  if (cleanDatabaseUrl) {
+    const result = await pool.query(
+      'UPDATE products SET stock = stock + $1 WHERE id = $2 RETURNING *',
+      [qty, id]
+    );
+    return formatProduct(result.rows[0]);
+  } else {
+    sqliteDb.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(qty, id);
+    return formatProduct(sqliteDb.prepare('SELECT * FROM products WHERE id = ?').get(id));
+  }
 }
 
 /**
@@ -518,6 +564,8 @@ module.exports = {
   updateProduct,
   updateStock,
   toggleStock,
+  sellProduct,
+  restockProduct,
   deleteProduct,
   countProducts,
   countAdmins,

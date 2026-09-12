@@ -18,6 +18,8 @@ const {
   updateProduct,
   updateStock,
   toggleStock,
+  sellProduct,
+  restockProduct,
   deleteProduct,
   countProducts,
   countAdmins,
@@ -187,12 +189,13 @@ app.get('/api/admin/stats', authMiddleware, async (req, res) => {
 // POST /api/admin/products — Adaugă un produs nou
 app.post('/api/admin/products', authMiddleware, async (req, res) => {
   try {
-    const { name, description, price, old_price, stock, image, category, requires_prescription } = req.body;
+    const { name, barcode, description, price, old_price, stock, image, category, requires_prescription } = req.body;
     if (!name || price === undefined || stock === undefined) {
       return res.status(400).json({ error: 'Numele, prețul și stocul sunt obligatorii.' });
     }
     const product = await addProduct({
       name,
+      barcode: barcode ? String(barcode).trim() : '',
       description,
       price: parseFloat(price),
       old_price,
@@ -214,9 +217,10 @@ app.put('/api/admin/products/:id', authMiddleware, async (req, res) => {
     const existing = await getProductById(req.params.id);
     if (!existing) return res.status(404).json({ error: 'Produs negăsit.' });
 
-    const { name, description, price, old_price, stock, image, category, requires_prescription } = req.body;
+    const { name, barcode, description, price, old_price, stock, image, category, requires_prescription } = req.body;
     const updated = await updateProduct(req.params.id, {
       name: name || existing.name,
+      barcode: barcode !== undefined ? String(barcode).trim() : existing.barcode,
       description: description !== undefined ? description : existing.description,
       price: price !== undefined ? parseFloat(price) : existing.price,
       old_price: old_price !== undefined ? old_price : existing.old_price,
@@ -228,6 +232,54 @@ app.put('/api/admin/products/:id', authMiddleware, async (req, res) => {
     res.json(updated);
   } catch (err) {
     console.error('Eroare la actualizarea produsului:', err);
+    res.status(500).json({ error: 'Eroare internă a serverului.' });
+  }
+});
+
+// POST /api/admin/products/:id/sell — Vânzare rapidă POS (-1 Vândut)
+app.post('/api/admin/products/:id/sell', authMiddleware, async (req, res) => {
+  try {
+    const existing = await getProductById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Produs negăsit.' });
+
+    if (existing.stock <= 0) {
+      return res.status(400).json({
+        error: `Produsul "${existing.name}" are deja stoc 0 (Fără stoc).`,
+        product: existing
+      });
+    }
+
+    const updated = await sellProduct(req.params.id);
+    res.json({
+      success: true,
+      message: `Vânzare înregistrată (-1 buc). Stoc nou: ${updated.stock} buc.`,
+      product: updated
+    });
+  } catch (err) {
+    console.error('Eroare la vânzarea rapidă POS:', err);
+    res.status(500).json({ error: 'Eroare internă a serverului.' });
+  }
+});
+
+// POST /api/admin/products/:id/restock — Reaprovizionare marfă nouă (+N bucăți)
+app.post('/api/admin/products/:id/restock', authMiddleware, async (req, res) => {
+  try {
+    const existing = await getProductById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Produs negăsit.' });
+
+    const quantity = parseInt(req.body.quantity, 10);
+    if (isNaN(quantity) || quantity <= 0) {
+      return res.status(400).json({ error: 'Cantitatea de reaprovizionare trebuie să fie un număr pozitiv.' });
+    }
+
+    const updated = await restockProduct(req.params.id, quantity);
+    res.json({
+      success: true,
+      message: `Reaprovizionare reușită (+${quantity} buc). Stoc nou: ${updated.stock} buc.`,
+      product: updated
+    });
+  } catch (err) {
+    console.error('Eroare la reaprovizionare:', err);
     res.status(500).json({ error: 'Eroare internă a serverului.' });
   }
 });
@@ -332,14 +384,10 @@ app.get('*', (req, res) => {
 //  Seed — Date inițiale demonstrative pentru produse
 // ──────────────────────────────────────────────
 async function seedProducts() {
-  const count = await countProducts();
-  if (count > 0) return;
-
-  console.log('🌱 Se adaugă produsele demonstrative...');
-
   const demoProducts = [
     {
       name: 'Paracetamol 500mg',
+      barcode: '5941234567890',
       description: 'Analgezic și antipiretic. Cutie cu 20 comprimate filmate. Ameliorează durerea și reduce febra.',
       price: 25.50,
       old_price: 32.00,
@@ -350,6 +398,7 @@ async function seedProducts() {
     },
     {
       name: 'Ibuprofen 400mg',
+      barcode: '5942345678901',
       description: 'Anti-inflamator nesteroidian. Cutie cu 10 comprimate. Eficient împotriva durerilor musculare și articulare.',
       price: 35.00,
       old_price: null,
@@ -360,6 +409,7 @@ async function seedProducts() {
     },
     {
       name: 'Vitamina C 1000mg',
+      barcode: '5943456789012',
       description: 'Supliment alimentar. 20 comprimate efervescente cu aromă de portocale. Susține imunitatea.',
       price: 65.90,
       old_price: 79.90,
@@ -370,6 +420,7 @@ async function seedProducts() {
     },
     {
       name: 'Amoxicilină 500mg',
+      barcode: '5944567890123',
       description: 'Antibiotic cu spectru larg. Cutie cu 16 capsule. Se eliberează strict pe bază de rețetă.',
       price: 42.00,
       old_price: null,
@@ -380,6 +431,7 @@ async function seedProducts() {
     },
     {
       name: 'Cremă Hidratantă cu Acid Hialuronic',
+      barcode: '5945678901234',
       description: 'Cosmetice dermatologice. Flacon 50ml. Hidratare intensă 24h pentru ten sensibil.',
       price: 145.00,
       old_price: 180.00,
@@ -390,6 +442,7 @@ async function seedProducts() {
     },
     {
       name: 'Șampon Dermatologic Calmant',
+      barcode: '5946789012345',
       description: 'Îngrijire personală. 250ml. Fără sulfați, reduce iritația scalpului și mâncărimea.',
       price: 98.00,
       old_price: null,
@@ -400,6 +453,7 @@ async function seedProducts() {
     },
     {
       name: 'Sirop Alinare Colici Bebeluși',
+      barcode: '5947890123456',
       description: 'Copii & Mămici. 100ml. Formulă naturală pe bază de mărar și mușețel pentru bebeluși.',
       price: 85.00,
       old_price: 99.00,
@@ -410,6 +464,7 @@ async function seedProducts() {
     },
     {
       name: 'Spray Nazal Xilometazolină',
+      barcode: '5948901234567',
       description: 'Decongestionant nazal cu acțiune rapidă. Flacon 10ml.',
       price: 45.00,
       old_price: null,
@@ -420,11 +475,27 @@ async function seedProducts() {
     }
   ];
 
-  for (const product of demoProducts) {
-    await addProduct(product);
+  const count = await countProducts();
+  if (count === 0) {
+    console.log('🌱 Se adaugă produsele demonstrative...');
+    for (const product of demoProducts) {
+      await addProduct(product);
+    }
+    console.log(`✅ ${demoProducts.length} produse demonstrative adăugate.`);
+  } else {
+    // Sincronizăm codurile de bare pentru produsele existente care nu au cod de bare setat
+    const existingProducts = await getAllProducts();
+    for (const p of existingProducts) {
+      if (!p.barcode) {
+        const match = demoProducts.find(d => d.name === p.name);
+        const fallbackBarcode = match ? match.barcode : `594000${String(p.id).padStart(7, '0')}`;
+        await updateProduct(p.id, {
+          ...p,
+          barcode: fallbackBarcode
+        });
+      }
+    }
   }
-
-  console.log(`✅ ${demoProducts.length} produse demonstrative adăugate.`);
 }
 
 // ──────────────────────────────────────────────

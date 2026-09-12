@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
 </head>
 <body class="admin-body">
 
@@ -18,7 +18,7 @@
     <div class="login-card">
       <div class="login-header">
         <div class="login-icon">
-          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 48px; height: 48px; display: block;">
             <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#gradLogin)"/>
             <path d="M24 12V36M12 24H36" stroke="white" stroke-width="4" stroke-linecap="round"/>
             <defs>
@@ -51,7 +51,7 @@
           </svg>
         </button>
       </form>
-      <a href="/" class="login-back">← Înapoi la pagina farmaciei</a>
+      <a href="index.html" class="login-back">← Înapoi la pagina farmaciei</a>
     </div>
   </div>
 
@@ -61,9 +61,9 @@
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <a href="/" class="logo" id="admin-logo">
+        <a href="index.html" class="logo" id="admin-logo">
           <div class="logo-icon">
-            <svg viewBox="0 0 40 40" fill="none">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="width: 40px; height: 40px; display: block;">
               <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#gradSide)"/>
               <path d="M20 10V30M10 20H30" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
               <defs>
@@ -127,7 +127,7 @@
           <h2 id="view-title">Dashboard & Gestiune</h2>
         </div>
         <div class="topbar-actions">
-          <a href="/" target="_blank" class="btn btn-outline btn-sm" id="view-site-btn">
+          <a href="index.html" target="_blank" class="btn btn-outline btn-sm" id="view-site-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
               <polyline points="15 3 21 3 21 9"/>
@@ -197,31 +197,47 @@
         <button class="btn btn-sm btn-outline-danger" id="filter-out-of-stock-btn">Vezi produsele epuizate</button>
       </div>
 
-      <!-- ═══════ 2. GESTIUNE PRODUSE VIEW ═══════ -->
+      <!-- ═══════ 2. GESTIUNE PRODUSE VIEW (POS & INVENTAR) ═══════ -->
       <div class="admin-view" id="view-products">
-        <div class="admin-table-controls">
-          <div class="search-wrap">
-            <svg class="control-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input type="text" class="admin-control-input" id="admin-search" placeholder="Căutare rapidă după denumire produs...">
+        
+        <!-- POS Bar: Scaner coduri de bare & Căutare rapidă -->
+        <div class="pos-quick-bar" id="pos-quick-bar">
+          <div class="pos-bar-header">
+            <div class="pos-badge">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+              Sistem Casă de Marcat (POS)
+            </div>
+            <div class="pos-hint">💡 Scanează codul de bare sau tastează numele și apasă <strong>Enter</strong> pentru vânzare rapidă</div>
           </div>
-          <div class="filter-wrap">
-            <select class="admin-control-select" id="admin-category-filter">
-              <option value="">Toate Categoriile</option>
-              <option value="Analgezice">Analgezice</option>
-              <option value="Suplimente">Suplimente</option>
-              <option value="Cosmetice">Cosmetice</option>
-              <option value="Îngrijire personală">Îngrijire personală</option>
-              <option value="Copii & Mămici">Copii & Mămici</option>
-              <option value="Antibiotice">Antibiotice</option>
-              <option value="Vitamine">Vitamine</option>
-              <option value="Antialergice">Antialergice</option>
-              <option value="Gastro-intestinale">Gastro-intestinale</option>
-              <option value="ORL">ORL</option>
-              <option value="General">General</option>
-            </select>
+          <div class="pos-search-row">
+            <div class="pos-search-wrap">
+              <svg class="control-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+                <line x1="7" y1="12" x2="17" y2="12"/>
+              </svg>
+              <input type="text" class="pos-input" id="admin-search" placeholder="Scanează codul de bare sau caută după denumire produs..." autofocus autocomplete="off">
+              <button class="pos-clear-btn" id="pos-clear-search" style="display:none;" title="Resetează căutarea">&times;</button>
+            </div>
+            <div class="filter-wrap">
+              <select class="admin-control-select" id="admin-category-filter">
+                <option value="">Toate Categoriile</option>
+                <option value="Analgezice">Analgezice</option>
+                <option value="Suplimente">Suplimente</option>
+                <option value="Cosmetice">Cosmetice</option>
+                <option value="Îngrijire personală">Îngrijire personală</option>
+                <option value="Copii & Mămici">Copii & Mămici</option>
+                <option value="Antibiotice">Antibiotice</option>
+                <option value="Vitamine">Vitamine</option>
+                <option value="Antialergice">Antialergice</option>
+                <option value="Gastro-intestinale">Gastro-intestinale</option>
+                <option value="ORL">ORL</option>
+                <option value="General">General</option>
+              </select>
+            </div>
           </div>
+          <div id="pos-feedback-msg" class="pos-feedback-msg" style="display:none;"></div>
         </div>
 
         <div class="admin-table-wrap">
@@ -229,12 +245,14 @@
             <thead>
               <tr>
                 <th>Imagine</th>
-                <th>Denumire Produs</th>
+                <th>Denumire Produs &amp; Cod Bare</th>
                 <th>Categorie</th>
                 <th>Rețetă</th>
                 <th>Preț (MDL)</th>
                 <th>Stoc</th>
                 <th>Status</th>
+                <th style="text-align:center; min-width: 130px;">Vânzare POS</th>
+                <th style="min-width: 220px;">Reaprovizionare (+N)</th>
                 <th style="text-align:right;">Acțiuni</th>
               </tr>
             </thead>
@@ -304,11 +322,18 @@
             <input type="hidden" id="edit-id">
 
             <div class="form-row">
-              <div class="form-group">
+              <div class="form-group" style="flex: 1.5;">
                 <label for="prod-name">Denumire produs *</label>
                 <input type="text" id="prod-name" placeholder="ex: Paracetamol 500mg" required>
               </div>
-              <div class="form-group">
+              <div class="form-group" style="flex: 1.5;">
+                <label for="prod-barcode">Cod de Bare (EAN / Barcode)</label>
+                <div style="display:flex; gap: 8px;">
+                  <input type="text" id="prod-barcode" placeholder="ex: 5941234567890">
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-gen-barcode" title="Generează cod de bare automat" style="white-space:nowrap;">🎲 Generează</button>
+                </div>
+              </div>
+              <div class="form-group" style="flex: 1;">
                 <label for="prod-category">Categorie *</label>
                 <select id="prod-category" required>
                   <option value="Analgezice">Analgezice</option>
@@ -442,6 +467,6 @@
   <!-- ═══════ TOAST NOTIFICATIONS ═══════ -->
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="/js/admin.js"></script>
+  <script src="js/admin.js"></script>
 </body>
 </html>
