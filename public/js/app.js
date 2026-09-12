@@ -150,13 +150,14 @@
     const stockText = inStock ? `${product.stock} buc.` : 'Indisponibil';
     const delay = Math.min(index * 0.05, 0.5);
     
-    const imgSrc = product.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFhMjMzMiIvPjx0ZXh0IHg9IjIwMCIgeT0iMTUwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzY0NzQ4YiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkZhcm1hY2lhIE1vbGRvdmE8L3RleHQ+PC9zdmc+';
+    const defaultImg = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22400%22%20height%3D%22300%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23f1f5f9%22%2F%3E%3Ctext%20x%3D%22200%22%20y%3D%22150%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20fill%3D%22%2394a3b8%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3EFarmacia%20Moldova%3C%2Ftext%3E%3C%2Fsvg%3E';
+    const imgSrc = product.image || defaultImg;
 
     return `
       <article class="product-card" style="animation-delay: ${delay}s">
         <div class="product-card-img-wrap">
           <img class="product-card-img" src="${escapeHTML(imgSrc)}" alt="${escapeHTML(product.name)}" loading="lazy"
-               onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFhMjMzMiIvPjx0ZXh0IHg9IjIwMCIgeT0iMTUwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzY0NzQ4YiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkZhcm1hY2lhIE1vbGRvdmE8L3RleHQ+PC9zdmc+'">
+               onerror="this.src='${defaultImg}'">
           <span class="product-card-badge ${badgeClass}">${badgeText}</span>
           ${product.category ? `<span class="product-card-category">${escapeHTML(product.category)}</span>` : ''}
         </div>

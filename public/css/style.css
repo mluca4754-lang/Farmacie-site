@@ -1,45 +1,45 @@
 /* ═══════════════════════════════════════════════
    Farmacia Moldova — Design System
-   Premium Dark Theme cu accente verzi medicinale
+   Modern Clean Light Theme (Versiunea White)
    ═══════════════════════════════════════════════ */
 
 /* ─── CSS Variables ─── */
 :root {
-  /* Culori principale */
-  --primary: #00b894;
-  --primary-light: #00cec9;
-  --primary-dark: #009b7d;
-  --primary-glow: rgba(0, 184, 148, 0.25);
+  /* Culori principale (Verde medicinal proaspăt și profesional) */
+  --primary: #059669;
+  --primary-light: #10b981;
+  --primary-dark: #047857;
+  --primary-glow: rgba(5, 150, 105, 0.16);
 
-  /* Background-uri */
-  --bg-body: #0a0f1a;
-  --bg-card: #111827;
-  --bg-card-hover: #1a2332;
-  --bg-surface: #151d2e;
-  --bg-input: #1a2332;
-  --bg-glass: rgba(17, 24, 39, 0.75);
+  /* Background-uri — Versiunea White curată, luminoasă și modernă */
+  --bg-body: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #ffffff;
+  --bg-surface: #f1f5f9;
+  --bg-input: #ffffff;
+  --bg-glass: rgba(255, 255, 255, 0.92);
 
-  /* Text */
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  /* Text — Slate pentru lizibilitate excelentă */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
 
   /* Accente */
-  --accent-green: #22c55e;
-  --accent-red: #ef4444;
-  --accent-yellow: #f59e0b;
-  --accent-blue: #3b82f6;
-  --accent-purple: #a855f7;
+  --accent-green: #16a34a;
+  --accent-red: #dc2626;
+  --accent-yellow: #d97706;
+  --accent-blue: #0284c7;
+  --accent-purple: #7c3aed;
 
   /* Borders */
-  --border-color: rgba(148, 163, 184, 0.1);
-  --border-color-hover: rgba(148, 163, 184, 0.2);
+  --border-color: #e2e8f0;
+  --border-color-hover: #cbd5e1;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 30px var(--primary-glow);
+  /* Shadows — Umbre subtile pe fundal alb */
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06), 0 2px 6px rgba(15, 23, 42, 0.03);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03);
+  --shadow-glow: 0 8px 24px rgba(5, 150, 105, 0.16);
 
   /* Radius */
   --radius-sm: 8px;
@@ -122,7 +122,7 @@ input, textarea, select {
 
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 20px var(--primary-glow); }
-  50% { box-shadow: 0 0 40px var(--primary-glow), 0 0 60px rgba(0, 184, 148, 0.1); }
+  50% { box-shadow: 0 0 35px var(--primary-glow), 0 0 50px rgba(5, 150, 105, 0.08); }
 }
 
 @keyframes float {
@@ -133,11 +133,6 @@ input, textarea, select {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
 }
 
 @keyframes slideDown {
@@ -172,7 +167,7 @@ input, textarea, select {
 }
 
 .header.scrolled {
-  background: rgba(10, 15, 26, 0.95);
+  background: rgba(255, 255, 255, 0.98);
   box-shadow: var(--shadow-md);
 }
 
@@ -235,18 +230,20 @@ input, textarea, select {
 }
 
 .nav-link:hover {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--primary);
+  background: rgba(5, 150, 105, 0.06);
 }
 
 .nav-admin {
   color: var(--primary);
-  border: 1px solid rgba(0, 184, 148, 0.2);
+  border: 1px solid rgba(5, 150, 105, 0.25);
+  background: rgba(5, 150, 105, 0.05);
 }
 
 .nav-admin:hover {
-  background: rgba(0, 184, 148, 0.1);
-  color: var(--primary-light);
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
 }
 
 /* Hamburger */
@@ -274,12 +271,13 @@ input, textarea, select {
    ═══════════════════════════════════════════════ */
 .hero {
   position: relative;
-  min-height: 100vh;
+  min-height: 88vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 120px 24px 80px;
+  padding: 120px 24px 70px;
   overflow: hidden;
+  background: radial-gradient(circle at 50% 10%, #ffffff 0%, #f8fafc 100%);
 }
 
 .hero-bg {
@@ -298,25 +296,25 @@ input, textarea, select {
 .hero-orb-1 {
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(0, 184, 148, 0.15), transparent 70%);
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.12), transparent 70%);
   top: -10%;
   right: -5%;
   animation-delay: 0s;
 }
 
 .hero-orb-2 {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(0, 206, 201, 0.1), transparent 70%);
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(2, 132, 199, 0.08), transparent 70%);
   bottom: 10%;
   left: -8%;
   animation-delay: -7s;
 }
 
 .hero-orb-3 {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.08), transparent 70%);
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.05), transparent 70%);
   top: 40%;
   left: 50%;
   animation-delay: -14s;
@@ -335,27 +333,29 @@ input, textarea, select {
   align-items: center;
   gap: 8px;
   padding: 8px 20px;
-  background: rgba(0, 184, 148, 0.1);
-  border: 1px solid rgba(0, 184, 148, 0.2);
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
   border-radius: 100px;
   font-size: 14px;
-  font-weight: 500;
-  color: var(--primary-light);
+  font-weight: 600;
+  color: #047857;
   margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
   animation: fadeInUp 0.8s ease 0.1s both;
 }
 
 .hero-title {
-  font-size: clamp(36px, 6vw, 64px);
+  font-size: clamp(36px, 6vw, 60px);
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.15;
   letter-spacing: -0.03em;
-  margin-bottom: 24px;
+  color: var(--text-primary);
+  margin-bottom: 20px;
   animation: fadeInUp 0.8s ease 0.2s both;
 }
 
 .hero-gradient {
-  background: linear-gradient(135deg, var(--primary), var(--primary-light), var(--accent-blue));
+  background: linear-gradient(135deg, #047857 0%, #059669 40%, #0284c7 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -375,7 +375,7 @@ input, textarea, select {
   gap: 16px;
   justify-content: center;
   flex-wrap: wrap;
-  margin-bottom: 60px;
+  margin-bottom: 50px;
   animation: fadeInUp 0.8s ease 0.4s both;
 }
 
@@ -383,6 +383,11 @@ input, textarea, select {
   display: flex;
   gap: 48px;
   justify-content: center;
+  padding: 24px 32px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
   animation: fadeInUp 0.8s ease 0.5s both;
 }
 
@@ -425,35 +430,36 @@ input, textarea, select {
 
 .btn-primary {
   background: linear-gradient(135deg, var(--primary), var(--primary-light));
-  color: #fff;
-  box-shadow: 0 4px 15px var(--primary-glow);
+  color: #ffffff;
+  box-shadow: 0 4px 14px var(--primary-glow);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px var(--primary-glow);
+  box-shadow: 0 8px 22px var(--primary-glow);
 }
 
 .btn-outline {
-  background: transparent;
+  background: #ffffff;
   color: var(--text-primary);
-  border: 1px solid var(--border-color-hover);
+  border: 1px solid #cbd5e1;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-outline:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
   border-color: var(--primary);
-  color: var(--primary-light);
+  color: var(--primary);
 }
 
 .btn-danger {
   background: linear-gradient(135deg, var(--accent-red), #dc2626);
-  color: #fff;
+  color: #ffffff;
 }
 
 .btn-danger:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 8px 22px rgba(220, 38, 38, 0.25);
 }
 
 .btn-lg {
@@ -480,6 +486,7 @@ input, textarea, select {
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border-color);
+  background: #ffffff;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
 }
@@ -487,24 +494,25 @@ input, textarea, select {
 .btn-icon:hover {
   border-color: var(--primary);
   color: var(--primary);
-  background: rgba(0, 184, 148, 0.1);
+  background: #ecfdf5;
 }
 
 .btn-icon.btn-icon-danger:hover {
   border-color: var(--accent-red);
   color: var(--accent-red);
-  background: rgba(239, 68, 68, 0.1);
+  background: #fef2f2;
 }
 
 /* ═══════════════════════════════════════════════
    FILTER BAR
    ═══════════════════════════════════════════════ */
 .filter-section {
-  padding: 0 0 32px;
+  padding: 0 0 28px;
   position: sticky;
   top: 72px;
   z-index: 100;
   background: var(--bg-body);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .filter-section .container {
@@ -512,9 +520,8 @@ input, textarea, select {
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
-  padding-top: 24px;
+  padding-top: 20px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color);
 }
 
 .filter-bar {
@@ -530,8 +537,9 @@ input, textarea, select {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
-  background: var(--bg-card);
+  background: #ffffff;
   border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
   transition: all var(--transition-fast);
   cursor: pointer;
 }
@@ -539,14 +547,14 @@ input, textarea, select {
 .filter-btn:hover {
   border-color: var(--border-color-hover);
   color: var(--text-primary);
-  background: var(--bg-card-hover);
+  background: #f1f5f9;
 }
 
 .filter-btn.active {
   background: linear-gradient(135deg, var(--primary), var(--primary-light));
-  color: #fff;
+  color: #ffffff;
   border-color: transparent;
-  box-shadow: 0 2px 10px var(--primary-glow);
+  box-shadow: 0 4px 14px var(--primary-glow);
 }
 
 .search-box {
@@ -566,12 +574,13 @@ input, textarea, select {
 .search-input {
   width: 100%;
   padding: 10px 16px 10px 44px;
-  background: var(--bg-card);
+  background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: 100px;
   color: var(--text-primary);
   font-size: 14px;
   outline: none;
+  box-shadow: var(--shadow-sm);
   transition: all var(--transition-fast);
 }
 
@@ -579,7 +588,7 @@ input, textarea, select {
 
 .search-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-glow);
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
 }
 
 /* ═══════════════════════════════════════════════
@@ -598,6 +607,7 @@ input, textarea, select {
   font-size: 32px;
   font-weight: 800;
   letter-spacing: -0.02em;
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 
@@ -614,24 +624,25 @@ input, textarea, select {
 
 /* ─── Product Card ─── */
 .product-card {
-  background: var(--bg-card);
+  background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   overflow: hidden;
   transition: all var(--transition-normal);
   animation: fadeInUp 0.5s ease both;
   position: relative;
+  box-shadow: var(--shadow-sm);
 }
 
 .product-card:hover {
   transform: translateY(-6px);
   border-color: var(--border-color-hover);
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
 }
 
 .product-card-img {
   width: 100%;
-  height: 200px;
+  height: 210px;
   object-fit: cover;
   background: var(--bg-surface);
   transition: transform var(--transition-slow);
@@ -656,20 +667,21 @@ input, textarea, select {
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
   z-index: 2;
+  box-shadow: var(--shadow-sm);
 }
 
 .badge-in-stock {
-  background: rgba(34, 197, 94, 0.2);
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
 }
 
 .badge-out-of-stock {
-  background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
 }
 
 .product-card-category {
@@ -679,11 +691,11 @@ input, textarea, select {
   padding: 4px 12px;
   border-radius: 100px;
   font-size: 11px;
-  font-weight: 500;
-  background: var(--bg-glass);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.95);
   color: var(--text-secondary);
-  backdrop-filter: blur(10px);
   border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
   z-index: 2;
 }
 
@@ -694,6 +706,7 @@ input, textarea, select {
 .product-card-name {
   font-size: 17px;
   font-weight: 700;
+  color: var(--text-primary);
   margin-bottom: 8px;
   letter-spacing: -0.01em;
 }
@@ -720,7 +733,7 @@ input, textarea, select {
 .product-card-price {
   font-size: 22px;
   font-weight: 800;
-  color: var(--primary-light);
+  color: var(--primary);
 }
 
 .product-card-price span {
@@ -745,12 +758,12 @@ input, textarea, select {
 
 .stock-dot.green {
   background: var(--accent-green);
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 8px rgba(22, 163, 74, 0.4);
 }
 
 .stock-dot.red {
   background: var(--accent-red);
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
 }
 
 /* Loading & Empty States */
@@ -767,7 +780,7 @@ input, textarea, select {
 .empty-state h3 {
   margin-top: 16px;
   font-size: 20px;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .empty-state p {
@@ -778,7 +791,7 @@ input, textarea, select {
    FOOTER
    ═══════════════════════════════════════════════ */
 .footer {
-  background: var(--bg-card);
+  background: #ffffff;
   border-top: 1px solid var(--border-color);
   padding: 64px 0 24px;
 }
@@ -822,7 +835,7 @@ input, textarea, select {
 }
 
 .footer-col a:hover {
-  color: var(--primary-light);
+  color: var(--primary);
 }
 
 .footer-bottom {
@@ -851,8 +864,9 @@ input, textarea, select {
     top: 72px;
     left: 0;
     right: 0;
-    background: var(--bg-card);
+    background: #ffffff;
     border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
     flex-direction: column;
     padding: 16px;
     transform: translateY(-120%);
@@ -870,7 +884,7 @@ input, textarea, select {
 
   .hero-title { font-size: 32px; }
   .hero-desc { font-size: 16px; }
-  .hero-stats { gap: 24px; }
+  .hero-stats { gap: 24px; padding: 20px; }
   .hero-stat-number { font-size: 22px; }
 
   .filter-section .container { flex-direction: column; align-items: stretch; }
@@ -883,7 +897,7 @@ input, textarea, select {
 }
 
 @media (max-width: 480px) {
-  .hero { padding: 100px 16px 60px; }
+  .hero { padding: 100px 16px 50px; }
   .hero-actions { flex-direction: column; align-items: center; }
   .btn-lg { width: 100%; }
 }
@@ -906,7 +920,8 @@ input, textarea, select {
   align-items: center;
   gap: 12px;
   padding: 14px 20px;
-  background: var(--bg-card);
+  background: #ffffff;
+  color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);

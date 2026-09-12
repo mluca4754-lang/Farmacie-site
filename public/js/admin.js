@@ -277,13 +277,14 @@
       const inStock = p.stock > 0;
       const statusClass = inStock ? 'status-in-stock' : 'status-out-of-stock';
       const statusText = inStock ? 'În stoc' : 'Stoc epuizat';
-      const imgSrc = p.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjMWEyMzMyIi8+PC9zdmc+';
+      const defaultTableImg = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2248%22%20height%3D%2248%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%23f1f5f9%22%2F%3E%3C%2Fsvg%3E';
+      const imgSrc = p.image || defaultTableImg;
 
       return `
         <tr data-id="${p.id}">
           <td>
             <img class="table-img" src="${escapeHTML(imgSrc)}" alt="${escapeHTML(p.name)}"
-                 onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjMWEyMzMyIi8+PC9zdmc+'">
+                 onerror="this.src='${defaultTableImg}'">
           </td>
           <td>
             <div class="table-product-name">${escapeHTML(p.name)}</div>
