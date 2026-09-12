@@ -17,7 +17,11 @@ const {
   updateProduct,
   updateStock,
   deleteProduct,
-  countProducts
+  countProducts,
+  countAdmins,
+  getAdminByUsername,
+  createAdmin,
+  updateAdminPassword
 } = require('./database');
 
 const app = express();
@@ -87,15 +91,36 @@ app.get('/api/products/:id', async (req, res) => {
 // POST /api/login — Autentificare administrator
 app.post('/api/login', async (req, res) => {
   try {
-    const { password } = req.body;
+    const { password, username = 'admin' } = req.body;
     if (!password) {
       return res.status(400).json({ error: 'Parola este obligatorie.' });
     }
-    const valid = await bcrypt.compare(password, adminPasswordHash);
+
+    const admin = await getAdminByUsername(username);
+    let valid = false;
+
+    if (admin && admin.password) {
+      valid = await bcrypt.compare(password, admin.password);
+      // Sincronizare automată dacă parola s-a schimbat în variabilele de mediu
+      if (!valid && ADMIN_PASSWORD && password === ADMIN_PASSWORD) {
+        const newHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+        await updateAdminPassword(username, newHash);
+        valid = true;
+      }
+    } else {
+      // Fallback la parola din mediu dacă contul nu există încă
+      const expectedHash = adminPasswordHash || await bcrypt.hash(ADMIN_PASSWORD, 10);
+      valid = await bcrypt.compare(password, expectedHash);
+      if (valid) {
+        await createAdmin(username, expectedHash);
+      }
+    }
+
     if (!valid) {
       return res.status(401).json({ error: 'Parolă incorectă.' });
     }
-    const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '8h' });
+
+    const token = jwt.sign({ role: 'admin', username }, JWT_SECRET, { expiresIn: '8h' });
     res.json({ token, message: 'Autentificare reușită!' });
   } catch (err) {
     console.error('Eroare la autentificare:', err);
@@ -303,17 +328,33 @@ async function seedProducts() {
 }
 
 // ──────────────────────────────────────────────
+//  Seed Admin — Verificare și inițializare cont admin
+// ──────────────────────────────────────────────
+async function seedAdmin() {
+  const count = await countAdmins();
+  if (count === 0) {
+    console.log('👤 Se inițializează contul implicit de administrator...');
+    const hash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+    await createAdmin('admin', hash);
+    console.log('✅ Cont administrator creat în tabela admins.');
+  }
+}
+
+// ──────────────────────────────────────────────
 //  Pornirea serverului
 // ──────────────────────────────────────────────
 async function startServer() {
   try {
-    // Hash-uim parola de admin
+    // Hash-uim parola de admin ca fallback
     adminPasswordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
 
-    // Inițializăm baza de date
+    // Inițializăm baza de date (PostgreSQL prin pg dacă există DATABASE_URL, altfel SQLite)
     await initDatabase();
 
-    // Seed cu date demo
+    // Verificăm / populăm tabela de administrare
+    await seedAdmin();
+
+    // Seed cu date demo pentru produse dacă tabela este goală
     await seedProducts();
 
     // Pornim serverul

@@ -55,7 +55,7 @@ Serverul va porni pe `http://localhost:3000`
 **Panou admin:** `http://localhost:3000/admin`
 **Parola implicită:** `admin123`
 
-## 🌐 Deploy pe Render.com
+## 🌐 Deploy pe Render.com & Baza de date PostgreSQL (Supabase / Render)
 
 1. Creează un cont pe [Render.com](https://render.com)
 2. Conectează repository-ul GitHub
@@ -65,9 +65,8 @@ Serverul va porni pe `http://localhost:3000`
 4. Adaugă **Environment Variables**:
    - `ADMIN_PASSWORD` — parola de administrator
    - `JWT_SECRET` — un string secret aleator lung
-   - `DB_TYPE` — `postgres`
-   - `DATABASE_URL` — se generează automat dacă adaugi un serviciu PostgreSQL
-5. Adaugă un serviciu **PostgreSQL** din dashboard-ul Render
+   - `DATABASE_URL` — șirul de conexiune PostgreSQL (din Supabase: *Project Settings* → *Database* → *Connection string* (URI) sau din Render PostgreSQL)
+5. **Inițializare automată**: La pornire, serverul detectează `DATABASE_URL`, se conectează prin pachetul `pg` cu suport SSL și creează automat tabelele `products` și `admins`, populându-le inițial dacă sunt goale.
 
 ## 🔒 API Endpoints
 
