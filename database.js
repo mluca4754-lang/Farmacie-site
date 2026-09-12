@@ -3,10 +3,29 @@
  * Suportă SQLite (dezvoltare locală) și PostgreSQL (Supabase / Render.com).
  */
 
+require('dotenv').config();
 const path = require('path');
+const { Pool } = require('pg');
 
 let db;
-let dbType;
+
+if (process.env.DATABASE_URL) {
+  // Conexiune PostgreSQL (Supabase / Render)
+  db = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false
+    }
+  });
+  console.log('Conectat la PostgreSQL (Supabase)');
+} else {
+  // Conexiune SQLite pentru dezvoltare locală
+  const Database = require('better-sqlite3');
+  const dbPath = path.join(__dirname, 'farmacia.db');
+  db = new Database(dbPath);
+  db.pragma('journal_mode = WAL');
+  console.log('Conectat la SQLite (local)');
+}
 
 /**
  * Formatează produsul pentru a asigura tipuri numerice consistente
@@ -21,34 +40,11 @@ function formatProduct(row) {
 }
 
 /**
- * Inițializează conexiunea la baza de date și creează tabelele necesare.
+ * Inițializează tabelele necesare la pornirea serverului.
  */
 async function initDatabase() {
-  // Dacă există process.env.DATABASE_URL sau DB_TYPE este 'postgres', folosim pachetul pg
-  dbType = process.env.DATABASE_URL || process.env.DB_TYPE === 'postgres' ? 'postgres' : (process.env.DB_TYPE || 'sqlite');
-
-  if (dbType === 'postgres') {
-    const { Pool } = require('pg');
-    
-    // Configurare SSL pentru baze de date cloud (Supabase, Neon, Render etc.)
-    const isLocalhost = process.env.DATABASE_URL && (process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1'));
-    const ssl = isLocalhost ? false : { rejectUnauthorized: false };
-
-    db = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl
-    });
-
-    // Testăm conexiunea
-    try {
-      const client = await db.connect();
-      client.release();
-    } catch (connErr) {
-      console.error('❌ Eroare la conectarea la PostgreSQL (Supabase / Render):', connErr.message);
-      throw connErr;
-    }
-
-    // Creăm tabela pentru produse dacă nu există
+  if (process.env.DATABASE_URL) {
+    // Creare tabele cu sintaxă de PostgreSQL
     await db.query(`
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
@@ -59,28 +55,30 @@ async function initDatabase() {
         image VARCHAR(500) DEFAULT '',
         category VARCHAR(100) DEFAULT 'General',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
+      );
     `);
 
-    // Creăm tabela pentru administrare dacă nu există
     await db.query(`
       CREATE TABLE IF NOT EXISTS admins (
         id SERIAL PRIMARY KEY,
         username VARCHAR(100) UNIQUE NOT NULL DEFAULT 'admin',
         password VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
+      );
     `);
 
-    console.log('✅ Conectat la PostgreSQL cu succes (folosind pachetul pg)');
-    console.log('✅ Tabelele "products" și "admins" au fost verificate/create automat.');
-  } else {
-    const Database = require('better-sqlite3');
-    const dbPath = path.join(__dirname, 'farmacia.db');
-    db = new Database(dbPath);
-    db.pragma('journal_mode = WAL');
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS produse (
+        id SERIAL PRIMARY KEY,
+        nume TEXT,
+        pret NUMERIC,
+        stoc INT
+      );
+    `);
 
-    // Creăm tabela pentru produse în SQLite
+    console.log('✅ Tabelele PostgreSQL au fost create/verificate la pornire');
+  } else {
+    // Creare tabele SQLite
     db.exec(`
       CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,10 +97,16 @@ async function initDatabase() {
         password TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS produse (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nume TEXT,
+        pret REAL,
+        stoc INT
+      );
     `);
 
-    console.log('✅ Conectat la SQLite (local)');
-    console.log('✅ Tabelele "products" și "admins" au fost verificate/create automat.');
+    console.log('✅ Tabelele SQLite au fost create/verificate la pornire');
   }
 }
 
@@ -110,7 +114,7 @@ async function initDatabase() {
  * Obține toate produsele.
  */
 async function getAllProducts() {
-  if (dbType === 'postgres') {
+  if (process.env.DATABASE_URL) {
     const result = await db.query('SELECT * FROM products ORDER BY created_at DESC');
     return result.rows.map(formatProduct);
   } else {
@@ -122,7 +126,7 @@ async function getAllProducts() {
  * Obține un produs după ID.
  */
 async function getProductById(id) {
-  if (dbType === 'postgres') {
+  if (process.env.DATABASE_URL) {
     const result = await db.query('SELECT * FROM products WHERE id = $1', [id]);
     return formatProduct(result.rows[0]);
   } else {
@@ -134,7 +138,7 @@ async function getProductById(id) {
  * Adaugă un produs nou.
  */
 async function addProduct({ name, description, price, stock, image, category }) {
-  if (dbType === 'postgres') {
+  if (process.env.DATABASE_URL) {
     const result = await db.query(
       'INSERT INTO products (name, description, price, stock, image, category) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [name, description || '', price, stock, image || '', category || 'General']
@@ -153,7 +157,7 @@ async function addProduct({ name, description, price, stock, image, category }) 
  * Actualizează un produs.
  */
 async function updateProduct(id, { name, description, price, stock, image, category }) {
-  if (dbType === 'postgres') {
+  if (process.env.DATABASE_URL) {
     const result = await db.query(
       'UPDATE products SET name=$1, description=$2, price=$3, stock=$4, image=$5, category=$6 WHERE id=$7 RETURNING *',
       [name, description, price, stock, image, category, id]
@@ -171,7 +175,7 @@ async function updateProduct(id, { name, description, price, stock, image, categ
  * Actualizează doar stocul unui produs.
  */
 async function updateStock(id, stock) {
-  if (dbType === 'postgres') {
+  if (process.env.DATABASE_URL) {
     const result = await db.query('UPDATE products SET stock=$1 WHERE id=$2 RETURNING *', [stock, id]);
     return formatProduct(result.rows[0]);
   } else {
@@ -184,7 +188,7 @@ async function updateStock(id, stock) {
  * Șterge un produs.
  */
 async function deleteProduct(id) {
-  if (dbType === 'postgres') {
+  if (process.env.DATABASE_URL) {
     await db.query('DELETE FROM products WHERE id = $1', [id]);
   } else {
     db.prepare('DELETE FROM products WHERE id = ?').run(id);
@@ -196,7 +200,7 @@ async function deleteProduct(id) {
  * Numără produsele (pentru seed check).
  */
 async function countProducts() {
-  if (dbType === 'postgres') {
+  if (process.env.DATABASE_URL) {
     const result = await db.query('SELECT COUNT(*) as count FROM products');
     return parseInt(result.rows[0].count, 10);
   } else {
@@ -212,7 +216,7 @@ async function countProducts() {
  * Numără administratorii din baza de date.
  */
 async function countAdmins() {
-  if (dbType === 'postgres') {
+  if (process.env.DATABASE_URL) {
     const result = await db.query('SELECT COUNT(*) as count FROM admins');
     return parseInt(result.rows[0].count, 10);
   } else {
@@ -224,7 +228,7 @@ async function countAdmins() {
  * Găsește administratorul după username.
  */
 async function getAdminByUsername(username = 'admin') {
-  if (dbType === 'postgres') {
+  if (process.env.DATABASE_URL) {
     const result = await db.query('SELECT * FROM admins WHERE username = $1', [username]);
     return result.rows[0] || null;
   } else {
@@ -236,7 +240,7 @@ async function getAdminByUsername(username = 'admin') {
  * Creează sau actualizează contul de administrator.
  */
 async function createAdmin(username, passwordHash) {
-  if (dbType === 'postgres') {
+  if (process.env.DATABASE_URL) {
     const result = await db.query(
       'INSERT INTO admins (username, password) VALUES ($1, $2) ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password RETURNING *',
       [username, passwordHash]
@@ -254,7 +258,7 @@ async function createAdmin(username, passwordHash) {
  * Actualizează parola administratorului.
  */
 async function updateAdminPassword(username, passwordHash) {
-  if (dbType === 'postgres') {
+  if (process.env.DATABASE_URL) {
     const result = await db.query(
       'UPDATE admins SET password = $1 WHERE username = $2 RETURNING *',
       [passwordHash, username]

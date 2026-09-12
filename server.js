@@ -370,7 +370,8 @@ async function startServer() {
       console.log('');
     });
   } catch (err) {
-    console.error('❌ Eroare la pornirea serverului:', err);
+    console.error('❌ Eroare la pornirea serverului:', err.message || err);
+    if (err.stack) console.error(err.stack);
     process.exit(1);
   }
 }
