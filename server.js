@@ -28,7 +28,7 @@ const {
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'farmacia_moldova_secret_key_change_me';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Cojocaru1234';
 
 // Hash-ul parolei de admin (se calculează la pornire)
 let adminPasswordHash;
@@ -332,12 +332,14 @@ async function seedProducts() {
 //  Seed Admin — Verificare și inițializare cont admin
 // ──────────────────────────────────────────────
 async function seedAdmin() {
-  const count = await countAdmins();
-  if (count === 0) {
-    console.log('👤 Se inițializează contul implicit de administrator...');
+  const existing = await getAdminByUsername('admin');
+  if (!existing) {
+    console.log('👤 Se inițializează contul implicit de administrator (admin)...');
     const hash = await bcrypt.hash(ADMIN_PASSWORD, 10);
     await createAdmin('admin', hash);
-    console.log('✅ Cont administrator creat în tabela admins.');
+    console.log(`✅ Cont administrator creat în tabela admins: utilizator "admin", parola "${ADMIN_PASSWORD}".`);
+  } else {
+    console.log('👤 Contul de administrator "admin" există deja în baza de date.');
   }
 }
 
@@ -366,7 +368,8 @@ async function startServer() {
       console.log('╠══════════════════════════════════════════════╣');
       console.log(`║  🌐  http://localhost:${PORT}                   ║`);
       console.log(`║  🔐  Admin: http://localhost:${PORT}/admin      ║`);
-      console.log(`║  📦  Parola admin: ${ADMIN_PASSWORD.substring(0, 4)}...                  ║`);
+      console.log(`║  👤  Utilizator: admin                           ║`);
+      console.log(`║  🔑  Parola implicită: ${ADMIN_PASSWORD}            ║`);
       console.log('╚══════════════════════════════════════════════╝');
       console.log('');
     });

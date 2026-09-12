@@ -53,7 +53,8 @@ npm start
 Serverul va porni pe `http://localhost:3000`
 
 **Panou admin:** `http://localhost:3000/admin`
-**Parola implicită:** `admin123`
+**Utilizator implicit:** `admin`
+**Parola implicită:** `Cojocaru1234`
 
 ## 🌐 Deploy pe Render.com & Baza de date PostgreSQL (Supabase / Render)
 
