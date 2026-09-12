@@ -7,7 +7,7 @@
   <title>Panou de Administrare — Farmacia Moldova</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/admin.css">
 </head>
@@ -83,10 +83,17 @@
       <nav class="sidebar-nav">
         <a href="#" class="sidebar-link active" data-view="products" id="sidebar-products">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-            <line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
           </svg>
-          Gestiune Produse
+          Vânzare POS &amp; Produse
+        </a>
+        <a href="#" class="sidebar-link" data-view="reports" id="sidebar-reports">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          Rapoarte Vânzări
         </a>
         <a href="#" class="sidebar-link" data-view="orders" id="sidebar-orders">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -197,73 +204,152 @@
         <button class="btn btn-sm btn-outline-danger" id="filter-out-of-stock-btn">Vezi produsele epuizate</button>
       </div>
 
-      <!-- ═══════ 2. GESTIUNE PRODUSE VIEW (POS & INVENTAR) ═══════ -->
+      <!-- ═══════ 2. GESTIUNE PRODUSE & VÂNZARE POS ═══════ -->
       <div class="admin-view" id="view-products">
-        
-        <!-- POS Bar: Scaner coduri de bare & Căutare rapidă -->
-        <div class="pos-quick-bar" id="pos-quick-bar">
-          <div class="pos-bar-header">
-            <div class="pos-badge">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-              </svg>
-              Sistem Casă de Marcat (POS)
-            </div>
-            <div class="pos-hint">💡 Scanează codul de bare sau tastează numele și apasă <strong>Enter</strong> pentru vânzare rapidă</div>
-          </div>
-          <div class="pos-search-row">
-            <div class="pos-search-wrap">
-              <svg class="control-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
-                <line x1="7" y1="12" x2="17" y2="12"/>
-              </svg>
-              <input type="text" class="pos-input" id="admin-search" placeholder="Scanează codul de bare sau caută după denumire produs..." autofocus autocomplete="off">
-              <button class="pos-clear-btn" id="pos-clear-search" style="display:none;" title="Resetează căutarea">&times;</button>
-            </div>
-            <div class="filter-wrap">
-              <select class="admin-control-select" id="admin-category-filter">
-                <option value="">Toate Categoriile</option>
-                <option value="Analgezice">Analgezice</option>
-                <option value="Suplimente">Suplimente</option>
-                <option value="Cosmetice">Cosmetice</option>
-                <option value="Îngrijire personală">Îngrijire personală</option>
-                <option value="Copii & Mămici">Copii & Mămici</option>
-                <option value="Antibiotice">Antibiotice</option>
-                <option value="Vitamine">Vitamine</option>
-                <option value="Antialergice">Antialergice</option>
-                <option value="Gastro-intestinale">Gastro-intestinale</option>
-                <option value="ORL">ORL</option>
-                <option value="General">General</option>
-              </select>
-            </div>
-          </div>
-          <div id="pos-feedback-msg" class="pos-feedback-msg" style="display:none;"></div>
-        </div>
+        <div class="pos-workstation-grid">
 
-        <div class="admin-table-wrap">
-          <table class="admin-table" id="admin-table">
-            <thead>
-              <tr>
-                <th>Imagine</th>
-                <th>Denumire Produs &amp; Cod Bare</th>
-                <th>Categorie</th>
-                <th>Rețetă</th>
-                <th>Preț (MDL)</th>
-                <th>Stoc</th>
-                <th>Status</th>
-                <th style="text-align:center; min-width: 130px;">Vânzare POS</th>
-                <th style="min-width: 220px;">Reaprovizionare (+N)</th>
-                <th style="text-align:right;">Acțiuni</th>
-              </tr>
-            </thead>
-            <tbody id="admin-table-body">
-              <!-- Rendered via JS -->
-            </tbody>
-          </table>
-        </div>
-        <div class="admin-loading" id="admin-loading">
-          <div class="spinner"></div>
-          <p>Se încarcă catalogul...</p>
+          <!-- COLOANA STÂNGA: Catalog & Scaner Barcode USB -->
+          <div class="pos-products-col">
+            <!-- POS Quick Bar -->
+            <div class="pos-quick-bar" id="pos-quick-bar">
+              <div class="pos-bar-header">
+                <div class="pos-badge">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                  </svg>
+                  Scaner Barcode USB &amp; Catalog
+                </div>
+                <div class="pos-hint">⚡ <strong>Auto-Focus permanent:</strong> Scanează codul de bare cu cititorul (Enter) sau apasă <strong>+ Bon</strong></div>
+              </div>
+              <div class="pos-search-row">
+                <div class="pos-search-wrap">
+                  <svg class="control-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+                    <line x1="7" y1="12" x2="17" y2="12"/>
+                  </svg>
+                  <input type="text" class="pos-input" id="admin-search" placeholder="Scanează codul de bare sau caută produs..." autofocus autocomplete="off">
+                  <button class="pos-clear-btn" id="pos-clear-search" style="display:none;" title="Resetează căutarea">&times;</button>
+                </div>
+                <div class="filter-wrap">
+                  <select class="admin-control-select" id="admin-category-filter">
+                    <option value="">Toate Categoriile</option>
+                    <option value="Analgezice">Analgezice</option>
+                    <option value="Suplimente">Suplimente</option>
+                    <option value="Cosmetice">Cosmetice</option>
+                    <option value="Îngrijire personală">Îngrijire personală</option>
+                    <option value="Copii & Mămici">Copii & Mămici</option>
+                    <option value="Antibiotice">Antibiotice</option>
+                    <option value="Vitamine">Vitamine</option>
+                    <option value="Antialergice">Antialergice</option>
+                    <option value="Gastro-intestinale">Gastro-intestinale</option>
+                    <option value="ORL">ORL</option>
+                    <option value="General">General</option>
+                  </select>
+                </div>
+              </div>
+              <div id="pos-feedback-msg" class="pos-feedback-msg" style="display:none;"></div>
+            </div>
+
+            <!-- Tabel Produse cu Buton Adaugă pe Bon -->
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="admin-table">
+                <thead>
+                  <tr>
+                    <th>Imagine</th>
+                    <th>Produs &amp; Cod Bare</th>
+                    <th>Categorie</th>
+                    <th>Preț (MDL)</th>
+                    <th>Stoc</th>
+                    <th>Status</th>
+                    <th style="text-align:center; min-width: 120px;">Acțiune POS</th>
+                    <th style="min-width: 170px;">Reaprovizionare</th>
+                    <th style="text-align:right;">Edit</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-table-body">
+                  <!-- Rendered via JS -->
+                </tbody>
+              </table>
+            </div>
+            <div class="admin-loading" id="admin-loading">
+              <div class="spinner"></div>
+              <p>Se încarcă catalogul...</p>
+            </div>
+          </div>
+
+          <!-- COLOANA DREAPTA: Coș de Cumpărături la Casă (Bon Curent) -->
+          <div class="pos-cart-col" id="pos-cart-container">
+            <div class="pos-cart-panel">
+              <div class="pos-cart-header">
+                <div class="pos-cart-header-title">
+                  <span class="pos-cart-icon">🧾</span>
+                  <div>
+                    <h3 class="pos-cart-title">Bon Curent (POS)</h3>
+                    <span class="pos-cart-receipt-no" id="pos-cart-receipt-no">BON-NOU</span>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-outline btn-xs" id="pos-clear-cart-btn" title="Golește bonul">
+                  Golește
+                </button>
+              </div>
+
+              <!-- Lista articolelor de pe bon (Scrollable) -->
+              <div class="pos-cart-items-wrap" id="pos-cart-items-wrap">
+                <div class="pos-cart-empty-state" id="pos-cart-empty-state">
+                  <div class="pos-cart-empty-illustration">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="3" width="20" height="18" rx="2"/>
+                      <line x1="8" y1="8" x2="16" y2="8"/>
+                      <line x1="8" y1="12" x2="16" y2="12"/>
+                      <line x1="8" y1="16" x2="12" y2="16"/>
+                    </svg>
+                  </div>
+                  <h4>Bonul este gol</h4>
+                  <p>Scanează un cod de bare cu scannerul USB sau apasă <strong>+ Bon</strong> de la orice produs.</p>
+                </div>
+
+                <div class="pos-cart-items-list" id="pos-cart-items-list" style="display:none;">
+                  <!-- Articole pe bon generate dinamic -->
+                </div>
+              </div>
+
+              <!-- Metodă de plată -->
+              <div class="pos-cart-payment-box">
+                <span class="pos-payment-label">Metodă încasare:</span>
+                <div class="pos-payment-methods">
+                  <label class="pos-payment-btn active" id="pay-method-cash">
+                    <input type="radio" name="pos-pay-method" value="Numerar" checked>
+                    <span>💵 Numerar</span>
+                  </label>
+                  <label class="pos-payment-btn" id="pay-method-card">
+                    <input type="radio" name="pos-pay-method" value="Card Bancar">
+                    <span>💳 Card</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Sumar & Total în timp real -->
+              <div class="pos-cart-totals">
+                <div class="pos-summary-line">
+                  <span>Număr produse pe bon:</span>
+                  <strong id="pos-cart-item-count">0 buc.</strong>
+                </div>
+                <div class="pos-total-display">
+                  <span class="pos-total-text">TOTAL DE PLATĂ:</span>
+                  <span class="pos-total-price" id="pos-cart-total-price">0.00 MDL</span>
+                </div>
+
+                <!-- Buton mare Finalizează Vânzare -->
+                <button type="button" class="btn btn-primary pos-btn-checkout" id="pos-checkout-btn" disabled>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  Finalizează Vânzare (Achitat)
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -314,7 +400,115 @@
         </div>
       </div>
 
-      <!-- ═══════ 4. ADĂUGARE / EDITARE PRODUS FORM ═══════ -->
+      <!-- ═══════ 4. RAPOARTE VÂNZĂRI POS ═══════ -->
+      <div class="admin-view" id="view-reports" style="display:none;">
+        <div class="reports-header-card">
+          <div class="reports-header-info">
+            <h3 class="reports-title">Rapoarte &amp; Încasări POS</h3>
+            <p class="reports-subtitle">Totaluri zilnice, statistici vânzări și istoricul bonurilor fiscale</p>
+          </div>
+          <div class="reports-header-actions">
+            <div class="reports-date-wrap">
+              <label for="reports-date-input">Selectează Data:</label>
+              <input type="date" id="reports-date-input" class="admin-control-input">
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" id="reports-today-btn">Astăzi</button>
+            <button type="button" class="btn btn-primary btn-sm" id="reports-refresh-btn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Actualizează
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 KPI Stat Cards Raport -->
+        <div class="stats-row reports-stats-grid">
+          <!-- Total Încasat -->
+          <div class="stat-card">
+            <div class="stat-card-icon stat-icon-green">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+            </div>
+            <div class="stat-card-info">
+              <span class="stat-card-number" id="rep-stat-revenue">0.00 MDL</span>
+              <span class="stat-card-label">Total Încasat</span>
+            </div>
+          </div>
+
+          <!-- Produse Vândute -->
+          <div class="stat-card">
+            <div class="stat-card-icon stat-icon-blue">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 01-8 0"/>
+              </svg>
+            </div>
+            <div class="stat-card-info">
+              <span class="stat-card-number" id="rep-stat-items">0 buc.</span>
+              <span class="stat-card-label">Produse Vândute</span>
+            </div>
+          </div>
+
+          <!-- Bonuri Emise -->
+          <div class="stat-card">
+            <div class="stat-card-icon stat-icon-purple">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="18" rx="2"/>
+                <line x1="8" y1="8" x2="16" y2="8"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+                <line x1="8" y1="16" x2="12" y2="16"/>
+              </svg>
+            </div>
+            <div class="stat-card-info">
+              <span class="stat-card-number" id="rep-stat-receipts">0</span>
+              <span class="stat-card-label">Bonuri Emise</span>
+            </div>
+          </div>
+
+          <!-- Valoare Medie Bon -->
+          <div class="stat-card">
+            <div class="stat-card-icon stat-icon-amber">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div class="stat-card-info">
+              <span class="stat-card-number" id="rep-stat-avg">0.00 MDL</span>
+              <span class="stat-card-label">Valoare Medie / Bon</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabel Istoricul Bonurilor -->
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="reports-sales-table">
+            <thead>
+              <tr>
+                <th>Nr. Bon</th>
+                <th>Dată &amp; Oră</th>
+                <th>Metodă Plată</th>
+                <th>Produse Vândute (Cantitate &times; Preț)</th>
+                <th style="text-align:center;">Total Buc.</th>
+                <th>Total Încasat</th>
+                <th style="text-align:right;">Acțiuni</th>
+              </tr>
+            </thead>
+            <tbody id="reports-sales-tbody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+        <div class="admin-loading" id="reports-loading" style="display:none;">
+          <div class="spinner"></div>
+          <p>Se încarcă rapoartele...</p>
+        </div>
+      </div>
+
+      <!-- ═══════ 5. ADĂUGARE / EDITARE PRODUS FORM ═══════ -->
       <div class="admin-view" id="view-add" style="display:none;">
         <div class="form-card">
           <h3 class="form-card-title" id="form-title">Adaugă Produs Nou</h3>
@@ -460,6 +654,30 @@
       <div class="modal-footer">
         <button class="btn btn-outline" id="delete-order-cancel">Anulează</button>
         <button class="btn btn-danger" id="delete-order-confirm">Șterge Comanda</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ RECEIPT VIEW / PRINT MODAL ═══════ -->
+  <div class="modal-overlay" id="receipt-modal" style="display:none;">
+    <div class="modal-card modal-receipt-card">
+      <div class="modal-header">
+        <h3>🧾 Bon Fiscal POS</h3>
+        <button class="modal-close" id="receipt-modal-close">&times;</button>
+      </div>
+      <div class="modal-body modal-receipt-body" id="receipt-modal-body">
+        <!-- Rendered via JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="receipt-close-btn">Închide</button>
+        <button type="button" class="btn btn-primary" id="receipt-print-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+          </svg>
+          Tipărește Bon
+        </button>
       </div>
     </div>
   </div>

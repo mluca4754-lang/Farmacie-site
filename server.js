@@ -32,7 +32,10 @@ const {
   updateOrderStatus,
   deleteOrder,
   countOrders,
-  getDashboardStats
+  getDashboardStats,
+  recordPosSale,
+  getPosSales,
+  getPosSalesReport
 } = require('./database');
 
 const app = express();
@@ -306,6 +309,64 @@ app.patch('/api/admin/products/:id/toggle-stock', authMiddleware, async (req, re
     res.json(updated);
   } catch (err) {
     console.error('Eroare la comutarea stocului:', err);
+    res.status(500).json({ error: 'Eroare internă a serverului.' });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  Rute API — POS Vânzare la Casă & Rapoarte
+// ──────────────────────────────────────────────
+
+// POST /api/admin/pos/checkout — Finalizează vânzarea pe bon (achitat)
+app.post('/api/admin/pos/checkout', authMiddleware, async (req, res) => {
+  try {
+    const { items, total_amount, total_items, payment_method, receipt_number } = req.body;
+    if (!items || !items.length) {
+      return res.status(400).json({ error: 'Bonul nu conține niciun produs.' });
+    }
+
+    // Înregistrăm vânzarea, scădem stocurile atomic și salvăm bonul
+    const result = await recordPosSale({
+      items,
+      total_amount,
+      total_items,
+      payment_method: payment_method || 'Numerar',
+      receipt_number
+    });
+
+    res.json({
+      success: true,
+      message: 'Vânzare finalizată cu succes!',
+      sale: result.sale,
+      updatedProducts: result.updatedProducts
+    });
+  } catch (err) {
+    console.error('Eroare la finalizarea vânzării POS:', err);
+    res.status(500).json({ error: err.message || 'Eroare la înregistrarea vânzării.' });
+  }
+});
+
+// GET /api/admin/pos/reports — Rapoarte vânzări (azi sau o anumită dată)
+app.get('/api/admin/pos/reports', authMiddleware, async (req, res) => {
+  try {
+    const date = req.query.date || null;
+    const report = await getPosSalesReport(date);
+    res.json(report);
+  } catch (err) {
+    console.error('Eroare la generarea raportului POS:', err);
+    res.status(500).json({ error: 'Eroare internă a serverului.' });
+  }
+});
+
+// GET /api/admin/pos/sales — Istoric bonuri POS
+app.get('/api/admin/pos/sales', authMiddleware, async (req, res) => {
+  try {
+    const date = req.query.date || null;
+    const limit = parseInt(req.query.limit, 10) || 100;
+    const sales = await getPosSales({ date, limit });
+    res.json(sales);
+  } catch (err) {
+    console.error('Eroare la obținerea istoricului de vânzări:', err);
     res.status(500).json({ error: 'Eroare internă a serverului.' });
   }
 });

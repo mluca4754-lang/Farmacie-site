@@ -85,6 +85,29 @@ function formatOrder(row) {
 }
 
 /**
+ * Formatează tranzacția POS (bonul fiscal/vânzarea)
+ */
+function formatSale(row) {
+  if (!row) return null;
+  let items = [];
+  try {
+    items = typeof row.items === 'string' ? JSON.parse(row.items) : (row.items || []);
+  } catch (e) {
+    items = [];
+  }
+  return {
+    ...row,
+    id: parseInt(row.id, 10),
+    receipt_number: row.receipt_number || `BON-${row.id}`,
+    items,
+    total_amount: parseFloat(row.total_amount),
+    total_items: parseInt(row.total_items, 10) || items.reduce((acc, it) => acc + (parseInt(it.quantity, 10) || 1), 0),
+    payment_method: row.payment_method || 'Numerar',
+    created_at: row.created_at
+  };
+}
+
+/**
  * Inițializează tabelele necesare la pornirea serverului.
  */
 async function initDatabase() {
@@ -139,7 +162,20 @@ async function initDatabase() {
         );
       `);
 
-      console.log('✅ Tabelele PostgreSQL ("products", "admins", "orders") sunt pregătite.');
+      // 4. Tabela pos_sales pentru casa de marcat (POS)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS pos_sales (
+          id SERIAL PRIMARY KEY,
+          receipt_number VARCHAR(100) NOT NULL,
+          items TEXT NOT NULL,
+          total_amount NUMERIC(10,2) NOT NULL,
+          total_items INTEGER NOT NULL DEFAULT 1,
+          payment_method VARCHAR(50) DEFAULT 'Numerar',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      console.log('✅ Tabelele PostgreSQL ("products", "admins", "orders", "pos_sales") sunt pregătite.');
     } catch (err) {
       if (err.code === '28P01') {
         console.error('❌ Eroare PostgreSQL (28P01): Autentificarea a eșuat pentru utilizatorul "postgres".');
@@ -184,6 +220,16 @@ async function initDatabase() {
         notes TEXT DEFAULT '',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS pos_sales (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        receipt_number TEXT NOT NULL,
+        items TEXT NOT NULL,
+        total_amount REAL NOT NULL,
+        total_items INTEGER NOT NULL DEFAULT 1,
+        payment_method TEXT DEFAULT 'Numerar',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Migrări SQLite tolerante la erori dacă există coloane lipsă
@@ -191,7 +237,7 @@ async function initDatabase() {
     try { sqliteDb.exec('ALTER TABLE products ADD COLUMN requires_prescription INTEGER DEFAULT 0;'); } catch (e) {}
     try { sqliteDb.exec("ALTER TABLE products ADD COLUMN barcode TEXT DEFAULT '';"); } catch (e) {}
 
-    console.log('✅ Tabelele SQLite ("products", "admins", "orders") sunt pregătite.');
+    console.log('✅ Tabelele SQLite ("products", "admins", "orders", "pos_sales") sunt pregătite.');
   }
 }
 
@@ -554,6 +600,134 @@ async function getDashboardStats() {
   };
 }
 
+// ──────────────────────────────────────────────
+//  Operațiuni pentru Casa de Marcat (POS Sales)
+// ──────────────────────────────────────────────
+
+/**
+ * Înregistrează o vânzare completă de la POS (Bon fiscal).
+ * Scade atomic stocurile produselor vândute și salvează tranzacția.
+ */
+async function recordPosSale({ items, total_amount, total_items, payment_method, receipt_number }) {
+  const parsedItems = typeof items === 'string' ? JSON.parse(items) : (items || []);
+  if (!parsedItems.length) {
+    throw new Error('Bonul trebuie să conțină cel puțin un produs.');
+  }
+
+  const receiptNum = receipt_number || `BON-${Date.now().toString().slice(-6)}`;
+  const itemsJson = typeof items === 'string' ? items : JSON.stringify(items);
+  const parsedTotal = parseFloat(total_amount) || 0;
+  const countItems = parseInt(total_items, 10) || parsedItems.reduce((acc, it) => acc + (parseInt(it.quantity, 10) || 1), 0);
+  const payment = payment_method || 'Numerar';
+
+  const updatedProducts = [];
+
+  // Scădem stocul fiecărui produs din bon
+  for (const item of parsedItems) {
+    const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
+    const prodId = parseInt(item.id, 10);
+    if (!prodId) continue;
+
+    if (cleanDatabaseUrl) {
+      const pRes = await pool.query(
+        'UPDATE products SET stock = GREATEST(0, stock - $1) WHERE id = $2 RETURNING *',
+        [qty, prodId]
+      );
+      if (pRes.rows && pRes.rows[0]) {
+        updatedProducts.push(formatProduct(pRes.rows[0]));
+      }
+    } else {
+      sqliteDb.prepare('UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?').run(qty, prodId);
+      const row = sqliteDb.prepare('SELECT * FROM products WHERE id = ?').get(prodId);
+      if (row) {
+        updatedProducts.push(formatProduct(row));
+      }
+    }
+  }
+
+  // Salvăm bonul fiscal în tabela pos_sales
+  let saleRow;
+  if (cleanDatabaseUrl) {
+    const sRes = await pool.query(
+      'INSERT INTO pos_sales (receipt_number, items, total_amount, total_items, payment_method) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [receiptNum, itemsJson, parsedTotal, countItems, payment]
+    );
+    saleRow = sRes.rows[0];
+  } else {
+    const info = sqliteDb.prepare(
+      'INSERT INTO pos_sales (receipt_number, items, total_amount, total_items, payment_method) VALUES (?, ?, ?, ?, ?)'
+    ).run(receiptNum, itemsJson, parsedTotal, countItems, payment);
+    saleRow = sqliteDb.prepare('SELECT * FROM pos_sales WHERE id = ?').get(info.lastInsertRowid);
+  }
+
+  return {
+    sale: formatSale(saleRow),
+    updatedProducts
+  };
+}
+
+/**
+ * Obține istoricul bonurilor POS.
+ */
+async function getPosSales({ date, limit = 100 } = {}) {
+  if (cleanDatabaseUrl) {
+    let query = 'SELECT * FROM pos_sales';
+    const params = [];
+    if (date) {
+      query += ' WHERE DATE(created_at) = $1';
+      params.push(date);
+    }
+    query += ' ORDER BY created_at DESC LIMIT $' + (params.length + 1);
+    params.push(limit);
+    const result = await pool.query(query, params);
+    return result.rows.map(formatSale);
+  } else {
+    let query = 'SELECT * FROM pos_sales';
+    const params = [];
+    if (date) {
+      query += " WHERE date(created_at) = ?";
+      params.push(date);
+    }
+    query += ' ORDER BY created_at DESC LIMIT ?';
+    params.push(limit);
+    return sqliteDb.prepare(query).all(...params).map(formatSale);
+  }
+}
+
+/**
+ * Raport vânzări POS pentru o anumită zi (sau azi).
+ */
+async function getPosSalesReport(targetDate = null) {
+  const dateStr = targetDate || new Date().toISOString().split('T')[0];
+  let sales = [];
+
+  if (cleanDatabaseUrl) {
+    const result = await pool.query(
+      'SELECT * FROM pos_sales WHERE DATE(created_at) = $1 ORDER BY created_at DESC',
+      [dateStr]
+    );
+    sales = result.rows.map(formatSale);
+  } else {
+    sales = sqliteDb.prepare(
+      "SELECT * FROM pos_sales WHERE date(created_at) = ? ORDER BY created_at DESC"
+    ).all(dateStr).map(formatSale);
+  }
+
+  const totalRevenue = sales.reduce((acc, s) => acc + (parseFloat(s.total_amount) || 0), 0);
+  const totalItemsSold = sales.reduce((acc, s) => acc + (parseInt(s.total_items, 10) || 0), 0);
+  const totalReceipts = sales.length;
+  const avgReceipt = totalReceipts > 0 ? totalRevenue / totalReceipts : 0;
+
+  return {
+    date: dateStr,
+    totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+    totalItemsSold,
+    totalReceipts,
+    avgReceipt: parseFloat(avgReceipt.toFixed(2)),
+    sales
+  };
+}
+
 module.exports = {
   pool,
   db: pool,
@@ -578,5 +752,8 @@ module.exports = {
   updateOrderStatus,
   deleteOrder,
   countOrders,
-  getDashboardStats
+  getDashboardStats,
+  recordPosSale,
+  getPosSales,
+  getPosSalesReport
 };

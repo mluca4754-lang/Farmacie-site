@@ -243,6 +243,7 @@
   //  Category Filters
   // ──────────────────────────────────────
   function buildCategoryFilters() {
+    if (!filterBar) return;
     const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))];
     
     // Păstrăm butonul "Toate" și adăugăm categoriile

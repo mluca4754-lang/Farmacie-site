@@ -20,6 +20,12 @@
   let stockProductId = null;
   let filterOnlyOutOfStock = false;
 
+  // POS Cart & Reports State
+  let posCart = []; // [{ id, name, barcode, price, stock, quantity }]
+  let currentReceiptNumber = generateReceiptNumber();
+  let selectedPaymentMethod = 'Numerar';
+  let selectedReportDate = new Date().toISOString().split('T')[0];
+
   // ──────────────────────────────────────
   //  DOM Elements
   // ──────────────────────────────────────
@@ -37,8 +43,40 @@
 
   const viewProducts = document.getElementById('view-products');
   const viewOrders = document.getElementById('view-orders');
+  const viewReports = document.getElementById('view-reports');
   const viewAdd = document.getElementById('view-add');
   const viewTitle = document.getElementById('view-title');
+
+  // POS Cart (Right Column) Elements
+  const posCartContainer = document.getElementById('pos-cart-container');
+  const posCartReceiptNo = document.getElementById('pos-cart-receipt-no');
+  const posClearCartBtn = document.getElementById('pos-clear-cart-btn');
+  const posCartItemsWrap = document.getElementById('pos-cart-items-wrap');
+  const posCartEmptyState = document.getElementById('pos-cart-empty-state');
+  const posCartItemsList = document.getElementById('pos-cart-items-list');
+  const payMethodCash = document.getElementById('pay-method-cash');
+  const payMethodCard = document.getElementById('pay-method-card');
+  const posCartItemCount = document.getElementById('pos-cart-item-count');
+  const posCartTotalPrice = document.getElementById('pos-cart-total-price');
+  const posCheckoutBtn = document.getElementById('pos-checkout-btn');
+
+  // Reports View Elements
+  const reportsDateInput = document.getElementById('reports-date-input');
+  const reportsTodayBtn = document.getElementById('reports-today-btn');
+  const reportsRefreshBtn = document.getElementById('reports-refresh-btn');
+  const repStatRevenue = document.getElementById('rep-stat-revenue');
+  const repStatItems = document.getElementById('rep-stat-items');
+  const repStatReceipts = document.getElementById('rep-stat-receipts');
+  const repStatAvg = document.getElementById('rep-stat-avg');
+  const reportsSalesTbody = document.getElementById('reports-sales-tbody');
+  const reportsLoading = document.getElementById('reports-loading');
+
+  // Receipt Modal Elements
+  const receiptModal = document.getElementById('receipt-modal');
+  const receiptModalClose = document.getElementById('receipt-modal-close');
+  const receiptCloseBtn = document.getElementById('receipt-close-btn');
+  const receiptPrintBtn = document.getElementById('receipt-print-btn');
+  const receiptModalBody = document.getElementById('receipt-modal-body');
 
   // Stats & Alert
   const statTotal = document.getElementById('admin-stat-total');
@@ -115,6 +153,10 @@
     setupProductControls();
     setupOrderControls();
     setupOutOfStockFilter();
+    setupPosCart();
+    setupUsbScannerAutoRefocus();
+    setupReportsView();
+    setupReceiptModal();
 
     if (token) {
       const valid = await verifyToken();
@@ -335,13 +377,20 @@
 
     viewProducts.style.display = 'none';
     if (viewOrders) viewOrders.style.display = 'none';
+    if (viewReports) viewReports.style.display = 'none';
     viewAdd.style.display = 'none';
 
     if (view === 'products') {
       viewProducts.style.display = 'block';
-      viewTitle.textContent = 'Gestiune Produse & Inventar';
+      viewTitle.textContent = 'Casă de Marcat (POS) & Gestiune';
       filterOnlyOutOfStock = false;
       renderProductsTable();
+      renderPosCart();
+      ensureScannerFocus();
+    } else if (view === 'reports') {
+      if (viewReports) viewReports.style.display = 'block';
+      viewTitle.textContent = 'Rapoarte Vânzări & Încasări POS';
+      loadReports(selectedReportDate);
     } else if (view === 'orders') {
       viewOrders.style.display = 'block';
       viewTitle.textContent = 'Comenzi Primite & Expedieri';
@@ -381,26 +430,31 @@
         adminSearch.value = '';
         posClearSearch.style.display = 'none';
         renderProductsTable();
-        adminSearch.focus();
+        ensureScannerFocus();
       });
     }
 
-    // Suport Scaner Coduri de Bare & Căutare rapidă la apăsarea tastei Enter
+    // Suport Scaner Coduri de Bare USB (tasta Enter trimisă de scaner)
     adminSearch.addEventListener('keydown', async (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         const val = adminSearch.value.trim().toLowerCase();
         if (!val) return;
 
-        // 1. Căutare exactă după cod de bare
-        let matched = products.find(p => p.barcode && p.barcode.toLowerCase() === val);
+        // 1. Căutare după cod de bare
+        let matched = products.find(p => p.barcode && p.barcode.trim().toLowerCase() === val);
 
-        // 2. Căutare după nume exact
+        // 2. Căutare după ID
         if (!matched) {
-          matched = products.find(p => p.name.toLowerCase() === val);
+          matched = products.find(p => String(p.id) === val);
         }
 
-        // 3. Dacă există un singur produs filtrat în listă
+        // 3. Căutare după nume exact
+        if (!matched) {
+          matched = products.find(p => p.name.trim().toLowerCase() === val);
+        }
+
+        // 4. Dacă există un singur produs filtrat în listă
         if (!matched) {
           const matching = products.filter(p =>
             (p.barcode && p.barcode.toLowerCase().includes(val)) ||
@@ -413,27 +467,29 @@
 
         if (matched) {
           if (matched.stock > 0) {
-            await adminActions.quickSell(matched.id);
-            flashPosFeedback(`⚡ Vânzare înregistrată: <strong>${escapeHTML(matched.name)}</strong> (-1 buc.). Stoc nou: ${matched.stock} buc.`, 'success');
-            // Dacă a fost un cod de bare scanat (numai cifre), curățăm câmpul pentru următoarea scanare
-            if (/^\d{6,}$/.test(val)) {
-              adminSearch.value = '';
-              if (posClearSearch) posClearSearch.style.display = 'none';
-              renderProductsTable();
-            }
+            adminActions.addToCart(matched.id, 1);
+            adminSearch.value = '';
+            if (posClearSearch) posClearSearch.style.display = 'none';
+            renderProductsTable();
+            flashPosFeedback(`⚡ Adăugat pe bon: <strong>${escapeHTML(matched.name)}</strong> (+1 buc.).`, 'success');
           } else {
-            flashPosFeedback(`⚠️ Produsul <strong>${escapeHTML(matched.name)}</strong> este FĂRĂ STOC (0 bucăți)!`, 'error');
+            playBeep(false);
+            flashPosFeedback(`⚠️ Produsul <strong>${escapeHTML(matched.name)}</strong> este FĂRĂ STOC (0 buc)!`, 'error');
             showToast(`Produsul "${matched.name}" are stocul epuizat.`, 'error');
           }
         } else {
+          playBeep(false);
           flashPosFeedback(`❌ Niciun produs găsit pentru codul / denumirea "${escapeHTML(val)}".`, 'error');
         }
+
+        ensureScannerFocus();
       }
     });
 
     adminCategoryFilter.addEventListener('change', () => {
       filterOnlyOutOfStock = false;
       renderProductsTable();
+      ensureScannerFocus();
     });
   }
 
@@ -550,13 +606,13 @@
             <span class="table-status ${statusClass}" style="${statusBadgeStyle}" id="stock-status-${p.id}">${statusText}</span>
           </td>
           <td style="text-align:center;">
-            <!-- Buton Vânzare Rapidă POS (-1) -->
-            <button class="btn-pos-sell ${!inStock ? 'disabled' : ''}" 
-                    id="btn-sell-${p.id}"
+            <!-- Buton Adaugă pe Bon POS -->
+            <button class="btn-pos-add ${!inStock ? 'disabled' : ''}" 
+                    id="btn-add-cart-${p.id}"
                     ${!inStock ? 'disabled' : ''} 
-                    title="${inStock ? 'Vinde 1 bucată (-1)' : 'Produsul nu mai are stoc'}" 
-                    onclick="adminActions.quickSell(${p.id})">
-              ${inStock ? '⚡ -1 Vândut' : '🚫 Fără Stoc'}
+                    title="${inStock ? 'Adaugă 1 buc. pe bonul curent' : 'Produsul nu mai are stoc'}" 
+                    onclick="adminActions.addToCart(${p.id})">
+              ${inStock ? '➕ Bon' : '🚫 Fără Stoc'}
             </button>
           </td>
           <td>
@@ -905,9 +961,670 @@
   }
 
   // ──────────────────────────────────────
+  //  POS Cart, USB Barcode Scanner & Reports Helpers
+  // ──────────────────────────────────────
+
+  function generateReceiptNumber() {
+    const d = new Date();
+    const datePart = d.getFullYear().toString().slice(-2) +
+      String(d.getMonth() + 1).padStart(2, '0') +
+      String(d.getDate()).padStart(2, '0');
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    return `BON-${datePart}-${rand}`;
+  }
+
+  function playBeep(success = true) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (success) {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.1);
+      } else {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+      }
+    } catch (e) {}
+  }
+
+  function setupUsbScannerAutoRefocus() {
+    window.addEventListener('focus', () => {
+      if (activeView === 'products') ensureScannerFocus();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (activeView !== 'products') return;
+      const target = e.target;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'BUTTON' ||
+        target.closest('button') ||
+        target.closest('a') ||
+        target.closest('.modal-overlay') ||
+        target.closest('.pos-qty-controls')
+      ) {
+        return;
+      }
+      ensureScannerFocus();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (activeView !== 'products') return;
+      const active = document.activeElement;
+      if (
+        active &&
+        (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')
+      ) {
+        return;
+      }
+      if (document.querySelector('.modal-overlay[style*="display: flex"]')) return;
+
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (adminSearch) {
+          adminSearch.focus();
+        }
+      }
+    });
+  }
+
+  function ensureScannerFocus() {
+    if (activeView !== 'products') return;
+    const active = document.activeElement;
+    if (
+      active &&
+      (active.classList.contains('pos-qty-input') ||
+       active.classList.contains('restock-input') ||
+       active.tagName === 'SELECT' ||
+       active.closest('.modal-overlay') ||
+       active.closest('#product-form'))
+    ) {
+      return;
+    }
+    if (adminSearch && active !== adminSearch) {
+      adminSearch.focus();
+    }
+  }
+
+  function setupPosCart() {
+    if (payMethodCash) {
+      payMethodCash.addEventListener('click', () => {
+        selectedPaymentMethod = 'Numerar';
+        payMethodCash.classList.add('active');
+        if (payMethodCard) payMethodCard.classList.remove('active');
+      });
+    }
+
+    if (payMethodCard) {
+      payMethodCard.addEventListener('click', () => {
+        selectedPaymentMethod = 'Card Bancar';
+        payMethodCard.classList.add('active');
+        if (payMethodCash) payMethodCash.classList.remove('active');
+      });
+    }
+
+    if (posClearCartBtn) {
+      posClearCartBtn.addEventListener('click', () => {
+        if (!posCart.length) return;
+        if (confirm('Ești sigur că vrei să golești bonul curent?')) {
+          adminActions.clearCart();
+        }
+      });
+    }
+
+    if (posCheckoutBtn) {
+      posCheckoutBtn.addEventListener('click', () => {
+        adminActions.checkoutPos();
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (activeView === 'products') {
+        if (e.key === 'F9' || (e.ctrlKey && e.key === 'Enter')) {
+          e.preventDefault();
+          if (posCart.length > 0) {
+            adminActions.checkoutPos();
+          }
+        }
+      }
+    });
+
+    renderPosCart();
+  }
+
+  function renderPosCart() {
+    if (!posCartReceiptNo) return;
+    posCartReceiptNo.textContent = currentReceiptNumber;
+
+    if (!posCart.length) {
+      if (posCartEmptyState) posCartEmptyState.style.display = 'flex';
+      if (posCartItemsList) {
+        posCartItemsList.style.display = 'none';
+        posCartItemsList.innerHTML = '';
+      }
+      if (posCheckoutBtn) {
+        posCheckoutBtn.disabled = true;
+        posCheckoutBtn.innerHTML = `
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Finalizează Vânzare (Achitat)
+        `;
+      }
+      if (posCartItemCount) posCartItemCount.textContent = '0 buc.';
+      if (posCartTotalPrice) posCartTotalPrice.textContent = '0.00 MDL';
+      return;
+    }
+
+    if (posCartEmptyState) posCartEmptyState.style.display = 'none';
+    if (posCartItemsList) posCartItemsList.style.display = 'flex';
+    if (posCheckoutBtn) {
+      posCheckoutBtn.disabled = false;
+      posCheckoutBtn.innerHTML = `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Finalizează Vânzare (Achitat)
+      `;
+    }
+
+    const totalCount = posCart.reduce((sum, it) => sum + it.quantity, 0);
+    const totalPrice = posCart.reduce((sum, it) => sum + (it.price * it.quantity), 0);
+
+    if (posCartItemCount) posCartItemCount.textContent = `${totalCount} buc.`;
+    if (posCartTotalPrice) posCartTotalPrice.textContent = `${formatPrice(totalPrice)} MDL`;
+
+    if (posCartItemsList) {
+      posCartItemsList.innerHTML = posCart.map(item => `
+        <div class="pos-cart-item" data-id="${item.id}">
+          <div class="pos-cart-item-header">
+            <div class="pos-cart-item-info">
+              <div class="pos-cart-item-name">${escapeHTML(item.name)}</div>
+              <div class="pos-cart-item-meta">
+                ${item.barcode ? `<span>🏷️ ${escapeHTML(item.barcode)}</span>` : ''}
+                <span class="pos-cart-item-price">${formatPrice(item.price)} MDL / buc</span>
+              </div>
+            </div>
+            <button type="button" class="pos-cart-item-remove" onclick="adminActions.removeFromCart(${item.id})" title="Șterge de pe bon">&times;</button>
+          </div>
+          <div class="pos-cart-item-footer">
+            <div class="pos-qty-controls">
+              <button type="button" class="pos-qty-btn" onclick="adminActions.changeCartQty(${item.id}, -1)">&minus;</button>
+              <input type="number" class="pos-qty-input" min="1" max="${item.stock}" value="${item.quantity}" onchange="adminActions.setCartQty(${item.id}, this.value)">
+              <button type="button" class="pos-qty-btn" onclick="adminActions.changeCartQty(${item.id}, 1)">&plus;</button>
+            </div>
+            <div class="pos-item-subtotal">${formatPrice(item.price * item.quantity)} MDL</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  function onSaleFinalized(sale) {
+    playBeep(true);
+    showReceiptModal(sale);
+    showToast(`✅ Vânzare finalizată! #${sale.receipt_number} — ${formatPrice(sale.total_amount)} MDL achitat.`, 'success');
+
+    posCart = [];
+    currentReceiptNumber = generateReceiptNumber();
+    renderPosCart();
+    renderProductsTable();
+    updateDashboardStatsUI();
+    ensureScannerFocus();
+  }
+
+  function saveLocalPosSale(sale) {
+    try {
+      const sales = JSON.parse(localStorage.getItem('farmacia_pos_sales') || '[]');
+      sales.unshift(sale);
+      localStorage.setItem('farmacia_pos_sales', JSON.stringify(sales.slice(0, 500)));
+    } catch (e) {}
+  }
+
+  function getLocalPosSales(targetDate) {
+    try {
+      const all = JSON.parse(localStorage.getItem('farmacia_pos_sales') || '[]');
+      if (!targetDate) return all;
+      return all.filter(s => {
+        const d = s.created_at ? s.created_at.split('T')[0] : '';
+        return d === targetDate;
+      });
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function setupReportsView() {
+    if (reportsDateInput) {
+      reportsDateInput.value = selectedReportDate;
+      reportsDateInput.addEventListener('change', () => {
+        selectedReportDate = reportsDateInput.value || new Date().toISOString().split('T')[0];
+        loadReports(selectedReportDate);
+      });
+    }
+
+    if (reportsTodayBtn) {
+      reportsTodayBtn.addEventListener('click', () => {
+        selectedReportDate = new Date().toISOString().split('T')[0];
+        if (reportsDateInput) reportsDateInput.value = selectedReportDate;
+        loadReports(selectedReportDate);
+      });
+    }
+
+    if (reportsRefreshBtn) {
+      reportsRefreshBtn.addEventListener('click', () => {
+        loadReports(selectedReportDate);
+      });
+    }
+  }
+
+  async function loadReports(date) {
+    const targetDate = date || selectedReportDate || new Date().toISOString().split('T')[0];
+    if (reportsLoading) reportsLoading.style.display = 'block';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/pos/reports?date=${targetDate}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error();
+      const report = await res.json();
+      renderReportsData(report);
+    } catch (err) {
+      renderLocalReportsData(targetDate);
+    } finally {
+      if (reportsLoading) reportsLoading.style.display = 'none';
+    }
+  }
+
+  function renderReportsData(report) {
+    if (repStatRevenue) repStatRevenue.textContent = `${formatPrice(report.totalRevenue || 0)} MDL`;
+    if (repStatItems) repStatItems.textContent = `${report.totalItemsSold || 0} buc.`;
+    if (repStatReceipts) repStatReceipts.textContent = `${report.totalReceipts || 0}`;
+    if (repStatAvg) repStatAvg.textContent = `${formatPrice(report.avgReceipt || 0)} MDL`;
+
+    if (!reportsSalesTbody) return;
+    const sales = report.sales || [];
+    if (!sales.length) {
+      reportsSalesTbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align:center; padding: 36px 16px; color: var(--text-muted);">
+            Nicio vânzare înregistrată în data de ${selectedReportDate}.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    reportsSalesTbody.innerHTML = sales.map(s => {
+      const dateStr = s.created_at ? new Date(s.created_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }) : '';
+      const fullDateStr = s.created_at ? new Date(s.created_at).toLocaleDateString('ro-RO') : '';
+      const payBadge = s.payment_method === 'Card Bancar'
+        ? `<span class="badge-payment-card">💳 Card</span>`
+        : `<span class="badge-payment-cash">💵 Numerar</span>`;
+
+      const itemsList = (s.items || []).map(it => `
+        <span class="report-item-chip">${escapeHTML(it.name)} <strong>&times; ${it.quantity || 1}</strong></span>
+      `).join('');
+
+      return `
+        <tr>
+          <td><strong style="font-family:monospace; color:var(--text-primary);">${escapeHTML(s.receipt_number || '')}</strong></td>
+          <td><span style="font-size:12px; color:var(--text-secondary);">${fullDateStr} ${dateStr}</span></td>
+          <td>${payBadge}</td>
+          <td><div class="report-items-chips">${itemsList || '—'}</div></td>
+          <td style="text-align:center; font-weight:600;">${s.total_items || 1} buc.</td>
+          <td><strong style="color:#059669; font-size:14px;">${formatPrice(s.total_amount)} MDL</strong></td>
+          <td style="text-align:right;">
+            <button type="button" class="btn btn-outline btn-xs" onclick="adminActions.viewReceiptByNum('${escapeHTML(s.receipt_number)}')">
+              👁️ Bon
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderLocalReportsData(targetDate) {
+    const sales = getLocalPosSales(targetDate);
+    const totalRevenue = sales.reduce((acc, s) => acc + (parseFloat(s.total_amount) || 0), 0);
+    const totalItems = sales.reduce((acc, s) => acc + (parseInt(s.total_items, 10) || 0), 0);
+    const count = sales.length;
+    const avg = count > 0 ? totalRevenue / count : 0;
+
+    renderReportsData({
+      date: targetDate,
+      totalRevenue,
+      totalItemsSold: totalItems,
+      totalReceipts: count,
+      avgReceipt: avg,
+      sales
+    });
+  }
+
+  function setupReceiptModal() {
+    if (receiptModalClose) {
+      receiptModalClose.addEventListener('click', () => {
+        receiptModal.style.display = 'none';
+        ensureScannerFocus();
+      });
+    }
+    if (receiptCloseBtn) {
+      receiptCloseBtn.addEventListener('click', () => {
+        receiptModal.style.display = 'none';
+        ensureScannerFocus();
+      });
+    }
+    if (receiptPrintBtn) {
+      receiptPrintBtn.addEventListener('click', () => {
+        window.print();
+      });
+    }
+    if (receiptModal) {
+      receiptModal.addEventListener('click', (e) => {
+        if (e.target === receiptModal) {
+          receiptModal.style.display = 'none';
+          ensureScannerFocus();
+        }
+      });
+    }
+  }
+
+  function showReceiptModal(sale) {
+    if (!receiptModal || !receiptModalBody) return;
+    const items = sale.items || [];
+    const dateFormatted = sale.created_at
+      ? new Date(sale.created_at).toLocaleString('ro-RO')
+      : new Date().toLocaleString('ro-RO');
+
+    receiptModalBody.innerHTML = `
+      <div class="thermal-receipt">
+        <div class="receipt-header-text">
+          <h4>FARMACIA MOLDOVA</h4>
+          <div>Sănătatea ta, grija noastră</div>
+          <div>Chișinău, Bd. Ștefan cel Mare 100</div>
+          <div>Tel: +373 22 123 456</div>
+        </div>
+        <div class="receipt-divider"></div>
+        <div class="receipt-meta-row">
+          <span>BON FISCAL:</span>
+          <strong>${escapeHTML(sale.receipt_number)}</strong>
+        </div>
+        <div class="receipt-meta-row">
+          <span>DATA / ORA:</span>
+          <span>${dateFormatted}</span>
+        </div>
+        <div class="receipt-meta-row">
+          <span>OPERATOR:</span>
+          <span>Farmacist / Admin</span>
+        </div>
+        <div class="receipt-divider"></div>
+        <table class="receipt-table">
+          <thead>
+            <tr>
+              <th>Articol</th>
+              <th style="text-align:center;">Cant.</th>
+              <th class="r-price">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(it => `
+              <tr>
+                <td>${escapeHTML(it.name)}</td>
+                <td style="text-align:center;">${it.quantity}</td>
+                <td class="r-price">${formatPrice(it.subtotal || (it.price * it.quantity))} MDL</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div class="receipt-total-row">
+          <span>TOTAL ACHITAT:</span>
+          <span>${formatPrice(sale.total_amount)} MDL</span>
+        </div>
+        <div class="receipt-meta-row">
+          <span>METODĂ PLATĂ:</span>
+          <strong>${escapeHTML(sale.payment_method || 'Numerar')}</strong>
+        </div>
+        <div class="receipt-divider"></div>
+        <div class="receipt-footer-text">
+          *** VĂ MULȚUMIM PENTRU VIZITĂ! ***<br>
+          SĂNĂTATE ȘI O ZI BUNĂ!
+        </div>
+      </div>
+    `;
+
+    receiptModal.style.display = 'flex';
+  }
+
+  // ──────────────────────────────────────
   //  Global Actions for Table Buttons
   // ──────────────────────────────────────
   window.adminActions = {
+    // ─── POS Cart Operations ───
+    addToCart(id, qty = 1) {
+      const p = products.find(prod => prod.id === id);
+      if (!p) {
+        showToast('Produsul nu a fost găsit.', 'error');
+        return;
+      }
+      if (p.stock <= 0) {
+        playBeep(false);
+        showToast(`Produsul "${p.name}" are stoc 0!`, 'error');
+        return;
+      }
+
+      const existing = posCart.find(it => it.id === id);
+      const currentQtyInCart = existing ? existing.quantity : 0;
+      const targetQty = currentQtyInCart + qty;
+
+      if (targetQty > p.stock) {
+        playBeep(false);
+        showToast(`Stoc insuficient pentru "${p.name}". Maxim disponibil: ${p.stock} buc.`, 'error');
+        if (existing) existing.quantity = p.stock;
+      } else {
+        if (existing) {
+          existing.quantity = targetQty;
+        } else {
+          posCart.push({
+            id: p.id,
+            name: p.name,
+            barcode: p.barcode || '',
+            price: parseFloat(p.price) || 0,
+            stock: parseInt(p.stock, 10) || 0,
+            quantity: qty
+          });
+        }
+        playBeep(true);
+      }
+
+      renderPosCart();
+      ensureScannerFocus();
+    },
+
+    changeCartQty(id, delta) {
+      const idx = posCart.findIndex(it => it.id === id);
+      if (idx === -1) return;
+      const item = posCart[idx];
+      const nextQty = item.quantity + delta;
+
+      if (nextQty <= 0) {
+        posCart.splice(idx, 1);
+      } else if (nextQty > item.stock) {
+        playBeep(false);
+        showToast(`Stoc maxim atins pentru "${item.name}" (${item.stock} buc).`, 'info');
+        item.quantity = item.stock;
+      } else {
+        item.quantity = nextQty;
+      }
+
+      renderPosCart();
+      ensureScannerFocus();
+    },
+
+    setCartQty(id, rawVal) {
+      const item = posCart.find(it => it.id === id);
+      if (!item) return;
+      let val = parseInt(rawVal, 10);
+      if (isNaN(val) || val <= 0) {
+        this.removeFromCart(id);
+        return;
+      }
+      if (val > item.stock) {
+        playBeep(false);
+        showToast(`Stoc maxim atins pentru "${item.name}" (${item.stock} buc).`, 'info');
+        val = item.stock;
+      }
+      item.quantity = val;
+      renderPosCart();
+      ensureScannerFocus();
+    },
+
+    removeFromCart(id) {
+      posCart = posCart.filter(it => it.id !== id);
+      renderPosCart();
+      ensureScannerFocus();
+    },
+
+    clearCart() {
+      posCart = [];
+      renderPosCart();
+      ensureScannerFocus();
+    },
+
+    async checkoutPos() {
+      if (!posCart.length) {
+        showToast('Bonul este gol! Adaugă produse pentru a vinde.', 'error');
+        return;
+      }
+
+      // Check stocks before submitting
+      for (const it of posCart) {
+        const p = products.find(prod => prod.id === it.id);
+        if (p && it.quantity > p.stock) {
+          playBeep(false);
+          showToast(`Stoc insuficient pentru "${it.name}" (stoc: ${p.stock}, cerut: ${it.quantity})`, 'error');
+          return;
+        }
+      }
+
+      if (posCheckoutBtn) {
+        posCheckoutBtn.disabled = true;
+        posCheckoutBtn.innerHTML = `⏳ Se procesează bonul...`;
+      }
+
+      const totalAmount = posCart.reduce((sum, it) => sum + (it.price * it.quantity), 0);
+      const totalItems = posCart.reduce((sum, it) => sum + it.quantity, 0);
+      const receiptNo = currentReceiptNumber;
+
+      const payload = {
+        receipt_number: receiptNo,
+        items: posCart.map(it => ({
+          id: it.id,
+          name: it.name,
+          barcode: it.barcode,
+          price: it.price,
+          quantity: it.quantity,
+          subtotal: it.price * it.quantity
+        })),
+        total_amount: totalAmount,
+        total_items: totalItems,
+        payment_method: selectedPaymentMethod,
+        notes: ''
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/pos/checkout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.status === 401) return showLogin();
+        if (!res.ok) throw new Error('Eroare server checkout');
+
+        const data = await res.json();
+        const savedSale = data.sale || { ...payload, created_at: new Date().toISOString() };
+        
+        // Update product stocks locally from server response
+        if (Array.isArray(data.updated_products)) {
+          data.updated_products.forEach(up => {
+            const idx = products.findIndex(p => p.id === up.id);
+            if (idx !== -1) products[idx] = up;
+          });
+        } else {
+          posCart.forEach(it => {
+            const p = products.find(prod => prod.id === it.id);
+            if (p) p.stock = Math.max(0, p.stock - it.quantity);
+          });
+        }
+        localStorage.setItem('farmacia_products', JSON.stringify(products));
+        saveLocalPosSale(savedSale);
+
+        onSaleFinalized(savedSale);
+      } catch (err) {
+        // Fallback local instant: finalizare chiar și offline
+        posCart.forEach(it => {
+          const p = products.find(prod => prod.id === it.id);
+          if (p) p.stock = Math.max(0, p.stock - it.quantity);
+        });
+        localStorage.setItem('farmacia_products', JSON.stringify(products));
+
+        const offlineSale = {
+          id: 'pos_' + Date.now(),
+          receipt_number: receiptNo,
+          total_amount: totalAmount,
+          total_items: totalItems,
+          payment_method: selectedPaymentMethod,
+          items: payload.items,
+          created_at: new Date().toISOString()
+        };
+        saveLocalPosSale(offlineSale);
+
+        onSaleFinalized(offlineSale);
+      }
+    },
+
+    async viewReceiptByNum(receiptNum) {
+      if (!receiptNum) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/pos/sales?receipt_number=${encodeURIComponent(receiptNum)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const sales = await res.json();
+          if (sales.length) {
+            showReceiptModal(sales[0]);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      // Fallback local
+      const localSales = JSON.parse(localStorage.getItem('farmacia_pos_sales') || '[]');
+      const found = localSales.find(s => s.receipt_number === receiptNum);
+      if (found) {
+        showReceiptModal(found);
+      } else {
+        showToast(`Bonul #${receiptNum} nu a fost găsit.`, 'error');
+      }
+    },
+
     edit(id) {
       const p = products.find(prod => prod.id === id);
       if (!p) return;
